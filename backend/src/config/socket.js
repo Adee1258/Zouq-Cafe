@@ -76,8 +76,15 @@ const initSocket = (httpServer) => {
 };
 
 // Call this anywhere in controllers to emit events
+// Returns a no-op emitter when Socket.IO is not initialized (Vercel serverless)
 const getIO = () => {
-  if (!io) throw new Error('Socket.IO not initialized');
+  if (!io) {
+    // Graceful fallback — no crash on Vercel serverless
+    return {
+      to: () => ({ emit: () => {} }),
+      emit: () => {},
+    };
+  }
   return io;
 };
 

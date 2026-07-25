@@ -42,28 +42,28 @@ app.options('*', cors());
 // ─── Rate Limiters ────────────────────────────────────────────────────────────
 const isProd = process.env.NODE_ENV === 'production';
 
-// Auth endpoints — strict limit
-const authLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 min
-  max: isProd ? 20 : 100,   // 20 in prod, relaxed in dev
-  message: { success: false, message: 'Too many attempts. Please try again in 15 minutes.' },
-  standardHeaders: true,
-  legacyHeaders: false,
-});
-
-// Spin
-const spinLimiter = rateLimit({
-  windowMs: 60 * 1000,
-  max: isProd ? 10 : 30,
-  message: { success: false, message: 'Too many spin requests.' },
-});
-
-// General API limiter
 const generalLimiter = rateLimit({
   windowMs: 60 * 1000,
   max: isProd ? 200 : 1000,
   message: { success: false, message: 'Too many requests. Slow down.' },
   skip: (req) => req.path.startsWith('/api/health'),
+  validate: { xForwardedForHeader: false },
+});
+
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: isProd ? 20 : 100,
+  message: { success: false, message: 'Too many attempts. Please try again in 15 minutes.' },
+  standardHeaders: true,
+  legacyHeaders: false,
+  validate: { xForwardedForHeader: false },
+});
+
+const spinLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: isProd ? 10 : 30,
+  message: { success: false, message: 'Too many spin requests.' },
+  validate: { xForwardedForHeader: false },
 });
 
 app.use('/api/', generalLimiter);

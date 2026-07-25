@@ -31,7 +31,7 @@ const generalLimiter = rateLimit({
   max: isProd ? 200 : 1000,
   message: { success: false, message: 'Too many requests. Slow down.' },
   skip: (req) => req.path.startsWith('/api/health'),
-  validate: { xForwardedForHeader: false },
+  validate: { xForwardedForHeader: false, trustProxy: false },
 });
 
 const authLimiter = rateLimit({
@@ -40,14 +40,14 @@ const authLimiter = rateLimit({
   message: { success: false, message: 'Too many attempts. Please try again in 15 minutes.' },
   standardHeaders: true,
   legacyHeaders: false,
-  validate: { xForwardedForHeader: false },
+  validate: { xForwardedForHeader: false, trustProxy: false },
 });
 
 const spinLimiter = rateLimit({
   windowMs: 60 * 1000,
   max: isProd ? 10 : 30,
   message: { success: false, message: 'Too many spin requests.' },
-  validate: { xForwardedForHeader: false },
+  validate: { xForwardedForHeader: false, trustProxy: false },
 });
 
 app.use('/api/', generalLimiter);

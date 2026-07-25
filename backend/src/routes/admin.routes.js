@@ -10,6 +10,13 @@ const {
   createPrize, updatePrize, deletePrize, updateConfig,
 } = require('../controllers/spin.controller');
 const { getCustomers, getCustomer } = require('../controllers/customer.controller');
+const {
+  getAllPromos, createPromo, updatePromo, deletePromo, getPromoUsages,
+} = require('../controllers/promo.controller');
+const {
+  getAdminConfig, updateAdminConfig,
+  getCustomersWithPoints, getCustomerHistory, adjustPoints,
+} = require('../controllers/loyalty.controller');
 
 // All routes here require admin
 router.use(protect, adminOnly);
@@ -33,6 +40,20 @@ router.patch('/spin/config', updateConfig);
 // Customers
 router.get('/customers', getCustomers);
 router.get('/customers/:id', getCustomer);
+
+// Promo codes
+router.get('/promos',              getAllPromos);
+router.post('/promos',             createPromo);
+router.patch('/promos/:id',        updatePromo);
+router.delete('/promos/:id',       deletePromo);
+router.get('/promos/:id/usages',   getPromoUsages);
+
+// Loyalty points — admin management
+router.get('/loyalty/config',                     getAdminConfig);
+router.patch('/loyalty/config',                   updateAdminConfig);
+router.get('/loyalty/customers',                  getCustomersWithPoints);
+router.get('/loyalty/customers/:id/history',      getCustomerHistory);
+router.post('/loyalty/customers/:id/adjust',      adjustPoints);
 
 // Dashboard stats — server-side computation
 router.get('/dashboard-stats', async (req, res) => {

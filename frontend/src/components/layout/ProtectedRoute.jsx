@@ -8,23 +8,31 @@ import useAdminAuthStore from '../../stores/adminAuthStore';
 const ProtectedRoute = ({ children, adminOnly = false }) => {
   const location = useLocation();
 
-  // Admin routes check the dedicated admin store
+  // ── Admin routes ──────────────────────────────────────────────────────────
   if (adminOnly) {
     const { user, token } = useAdminAuthStore();
     if (!token || !user) {
       return <Navigate to="/admin/login" state={{ from: location }} replace />;
     }
-    // Sanity check — only ADMIN role allowed here
+    // Hard role check — only ADMIN role allowed inside the admin panel
     if (user.role !== 'ADMIN') {
-      return <Navigate to="/" replace />;
+      // Clear the corrupt admin store entry, then redirect
+      useAdminAuthStore.getState().logout();
+      return <Navigate to="/admin/login" replace />;
     }
     return children;
   }
 
-  // Customer routes check the customer store
-  const { user, token } = useAuthStore();
+  // ── Customer routes ───────────────────────────────────────────────────────
+  const { user, token, logout } = useAuthStore();
   if (!token || !user) {
     return <Navigate to="/login" state={{ from: location }} replace />;
+  }
+  // An ADMIN should never access customer-only routes via the customer store.
+  // Clear the corrupt session and send them to admin login.
+  if (user.role === 'ADMIN') {
+    logout();
+    return <Navigate to="/admin/login" replace />;
   }
 
   return children;

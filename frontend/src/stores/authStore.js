@@ -14,12 +14,19 @@ const getDataStore = async () => {
 
 // ── One-time migration from old keys → new customer keys ──────────────────────
 // Users who were logged in before the key rename will still be logged in
+// Only migrate if the old session belongs to a CUSTOMER (not ADMIN)
 const migrateOldSession = () => {
   const oldToken = localStorage.getItem('zouq_token');
   const oldUser  = localStorage.getItem('zouq_user');
   if (oldToken && !localStorage.getItem('zouq_customer_token')) {
-    localStorage.setItem('zouq_customer_token', oldToken);
-    if (oldUser) localStorage.setItem('zouq_customer_user', oldUser);
+    try {
+      const parsed = JSON.parse(oldUser || 'null');
+      // Only migrate customer accounts — admin accounts handled by adminAuthStore
+      if (parsed?.role !== 'ADMIN') {
+        localStorage.setItem('zouq_customer_token', oldToken);
+        if (oldUser) localStorage.setItem('zouq_customer_user', oldUser);
+      }
+    } catch { /* ignore parse errors */ }
   }
   // Clean up old keys regardless
   localStorage.removeItem('zouq_token');
@@ -27,9 +34,28 @@ const migrateOldSession = () => {
 };
 migrateOldSession();
 
+// If somehow an ADMIN user ended up in the customer store, clear it
+const storedCustomerUser = (() => {
+  try {
+    const parsed = JSON.parse(localStorage.getItem('zouq_customer_user') || 'null');
+    if (parsed?.role === 'ADMIN') {
+      localStorage.removeItem('zouq_customer_user');
+      localStorage.removeItem('zouq_customer_token');
+      return null;
+    }
+    return parsed;
+  } catch {
+    return null;
+  }
+})();
+
+const storedCustomerToken = storedCustomerUser
+  ? localStorage.getItem('zouq_customer_token')
+  : null;
+
 const useAuthStore = create((set, get) => ({
-  user: JSON.parse(localStorage.getItem('zouq_customer_user') || 'null'),
-  token: localStorage.getItem('zouq_customer_token') || null,
+  user: storedCustomerUser,
+  token: storedCustomerToken,
   isLoading: false,
   error: null,
 
@@ -39,6 +65,12 @@ const useAuthStore = create((set, get) => ({
     try {
       const { data } = await api.post('/auth/login', credentials);
       const { user, token } = data.data;
+
+      // Admin accounts cannot log in via customer portal
+      if (user.role === 'ADMIN') {
+        set({ isLoading: false, error: 'Admin accounts must use the admin login page.' });
+        return { success: false, message: 'Admin accounts must use the admin login page.' };
+      }
 
       localStorage.setItem('zouq_customer_token', token);
       localStorage.setItem('zouq_customer_user', JSON.stringify(user));
@@ -85,6 +117,13 @@ const useAuthStore = create((set, get) => ({
     try {
       const { data } = await api.get('/auth/me');
       const user = data.data.user;
+
+      // Admin user should never be in customer store
+      if (user.role === 'ADMIN') {
+        get().logout();
+        return;
+      }
+
       localStorage.setItem('zouq_customer_user', JSON.stringify(user));
       set({ user });
     } catch {

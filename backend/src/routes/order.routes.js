@@ -5,7 +5,7 @@ const { protect, adminOnly } = require('../middleware/auth');
 const validate = require('../middleware/validate');
 const {
   createOrder, getMyOrders, getMyOrder, cancelMyOrder,
-  getAllOrders, getOrderById, updateOrderStatus,
+  getAllOrders, getOrderById, updateOrderStatus, deleteOrder,
 } = require('../controllers/order.controller');
 
 // ── Admin routes FIRST (before /my to avoid route conflicts) ─────────────────
@@ -18,6 +18,7 @@ router.patch(
   validate,
   updateOrderStatus
 );
+router.delete('/admin/:id', protect, adminOnly, deleteOrder);
 
 // ── Customer routes ───────────────────────────────────────────────────────────
 router.post(
@@ -25,9 +26,11 @@ router.post(
   protect,
   [
     body('items').isArray({ min: 1 }).withMessage('Cart cannot be empty.'),
-    // productId is optional for custom deal items (no DB product)
+    // productId is optional for custom deal items (no DB product).
+    // When present it must be a positive integer; null/undefined is allowed.
     body('items.*.productId')
-      .optional({ nullable: true })
+      .optional({ nullable: true, checkFalsy: false })
+      .if((value) => value !== null && value !== undefined)
       .isInt({ min: 1 }).withMessage('Invalid product ID.'),
     body('items.*.quantity').isInt({ min: 1 }).withMessage('Quantity must be at least 1.'),
     body('address').trim().notEmpty().withMessage('Delivery address is required.'),

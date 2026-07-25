@@ -75,7 +75,11 @@ app.use('/api/deals',      require('./routes/deal.routes'));
 app.use('/api/orders',     require('./routes/order.routes'));
 app.use('/api/payments',   require('./routes/payment.routes'));
 app.use('/api/spin',       require('./routes/spin.routes'));
+app.use('/api/promo',      require('./routes/promo.routes'));
+app.use('/api/loyalty',    require('./routes/loyalty.routes'));
 app.use('/api/admin',      require('./routes/admin.routes'));
+app.use('/api/push',       require('./routes/push.routes'));
+app.use('/api/lucky-draw', require('./routes/luckyDraw.routes'));
 
 // ─── Health check ─────────────────────────────────────────────────────────────
 app.get('/api/health', (req, res) => {

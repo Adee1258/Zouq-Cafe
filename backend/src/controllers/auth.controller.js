@@ -1,4 +1,5 @@
 const bcrypt = require('bcryptjs');
+const crypto = require('crypto');
 const prisma = require('../config/prisma');
 const { signToken } = require('../utils/jwt');
 const { success, error } = require('../utils/response');
@@ -124,13 +125,21 @@ const login = async (req, res) => {
 // ─── POST /api/auth/admin/login ───────────────────────────────────────────────
 const adminLogin = async (req, res) => {
   try {
-    const email = normalizeEmail(req.body.email);
-    const { password } = req.body;
+    const { username, password } = req.body;
 
-    if (!email) return error(res, 'Email is required.', 400);
+    if (!username) return error(res, 'Username is required.', 400);
     if (!password) return error(res, 'Password is required.', 400);
 
-    const user = await prisma.user.findUnique({ where: { email } });
+    // Find admin by name (case-insensitive) or by email as fallback
+    const user = await prisma.user.findFirst({
+      where: {
+        role: 'ADMIN',
+        OR: [
+          { name: { equals: username, mode: 'insensitive' } },
+          { email: { equals: username.toLowerCase() } },
+        ],
+      },
+    });
 
     if (!user || user.role !== 'ADMIN') {
       return error(res, 'Invalid admin credentials.', 401);
@@ -157,7 +166,7 @@ const getMe = async (req, res) => {
   try {
     const user = await prisma.user.findUnique({
       where: { id: req.user.id },
-      select: { id: true, name: true, email: true, phone: true, address: true, role: true, createdAt: true },
+      select: { id: true, name: true, email: true, phone: true, address: true, role: true, createdAt: true, pointsBalance: true },
     });
     if (!user) return error(res, 'User not found.', 404);
     return success(res, { user });
@@ -239,4 +248,117 @@ const changePassword = async (req, res) => {
   }
 };
 
-module.exports = { signup, login, adminLogin, getMe, updateMe, changePassword };
+// ─── POST /api/auth/forgot-password ──────────────────────────────────────────
+// User apna phone ya email deta hai → 6-digit OTP generate hota hai (15 min valid)
+const forgotPassword = async (req, res) => {
+  try {
+    const email = normalizeEmail(req.body.email);
+    const phone = normalizePhone(req.body.phone);
+
+    if (!email && !phone) {
+      return error(res, 'Phone number or email is required.', 400);
+    }
+
+    const user = await prisma.user.findFirst({
+      where: email ? { email } : { phone },
+      select: { id: true, name: true, email: true, phone: true, role: true },
+    });
+
+    // Always return success — don't reveal whether account exists
+    if (!user || user.role === 'ADMIN') {
+      return success(res, {}, 'If this account exists, a reset code has been sent.');
+    }
+
+    // Delete any old unused tokens for this user
+    await prisma.passwordResetToken.deleteMany({ where: { userId: user.id } });
+
+    // Generate 6-digit numeric OTP
+    const otp = String(Math.floor(100000 + Math.random() * 900000));
+    const tokenHash = crypto.createHash('sha256').update(otp).digest('hex');
+    const expiresAt = new Date(Date.now() + 15 * 60 * 1000); // 15 minutes
+
+    await prisma.passwordResetToken.create({
+      data: { userId: user.id, token: tokenHash, expiresAt },
+    });
+
+    // In production: send via SMS (e.g. Twilio) or email (e.g. Nodemailer)
+    // For now: log to console + return in dev mode
+    console.log(`[forgotPassword] OTP for ${user.phone || user.email}: ${otp}`);
+
+    const isDev = process.env.NODE_ENV !== 'production';
+
+    return success(res, {
+      // Only expose OTP in development — remove this in production once SMS is wired
+      ...(isDev && { resetCode: otp, note: 'Dev mode only — remove in production' }),
+      contact: user.phone || user.email,
+    }, 'Reset code sent. Valid for 15 minutes.');
+  } catch (err) {
+    console.error('[forgotPassword]', err);
+    return error(res, 'Failed to process request. Please try again.', 500);
+  }
+};
+
+// ─── POST /api/auth/reset-password ───────────────────────────────────────────
+// User OTP + new password submit karta hai
+const resetPassword = async (req, res) => {
+  try {
+    const { code, newPassword } = req.body;
+    const email = normalizeEmail(req.body.email);
+    const phone = normalizePhone(req.body.phone);
+
+    if (!code || !newPassword) {
+      return error(res, 'Reset code and new password are required.', 400);
+    }
+    if (!email && !phone) {
+      return error(res, 'Phone number or email is required.', 400);
+    }
+    if (newPassword.length < 6) {
+      return error(res, 'Password must be at least 6 characters.', 400);
+    }
+
+    // Find user
+    const user = await prisma.user.findFirst({
+      where: email ? { email } : { phone },
+      select: { id: true },
+    });
+
+    if (!user) return error(res, 'Account not found.', 404);
+
+    // Hash the submitted OTP and compare
+    const tokenHash = crypto.createHash('sha256').update(String(code).trim()).digest('hex');
+
+    const record = await prisma.passwordResetToken.findFirst({
+      where: {
+        userId:   user.id,
+        token:    tokenHash,
+        used:     false,
+        expiresAt: { gt: new Date() },
+      },
+    });
+
+    if (!record) {
+      return error(res, 'Invalid or expired reset code. Please request a new one.', 400);
+    }
+
+    // Mark token used + update password — both in one transaction
+    const newHash = await bcrypt.hash(newPassword, 12);
+    await prisma.$transaction([
+      prisma.passwordResetToken.update({
+        where: { id: record.id },
+        data:  { used: true },
+      }),
+      prisma.user.update({
+        where: { id: user.id },
+        data:  { passwordHash: newHash },
+      }),
+    ]);
+
+    console.log(`[resetPassword] Password reset for userId ${user.id}`);
+    return success(res, {}, 'Password reset successfully. You can now login.');
+  } catch (err) {
+    console.error('[resetPassword]', err);
+    return error(res, 'Failed to reset password. Please try again.', 500);
+  }
+};
+
+module.exports = { signup, login, adminLogin, getMe, updateMe, changePassword, forgotPassword, resetPassword };

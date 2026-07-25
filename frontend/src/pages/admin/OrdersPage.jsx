@@ -3,7 +3,7 @@ import { useSearchParams } from 'react-router-dom';
 import {
   ChevronLeft, ChevronRight, Phone, Mail, MapPin,
   RefreshCw, X, ShoppingBag, ChevronDown, Clock,
-  CheckCircle2, ChefHat, Truck, XCircle, Package,
+  CheckCircle2, ChefHat, Truck, XCircle, Package, Trash2,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import api from '../../lib/api';
@@ -99,9 +99,10 @@ export const StatusDropdown = ({ currentStatus, orderId, onUpdated }) => {
 };
 
 // ── Order Detail Modal — exported for Dashboard use ──────────────────────────
-export const OrderDetailModal = ({ orderId, onClose, onUpdated }) => {
-  const [order,   setOrder]   = useState(null);
-  const [loading, setLoading] = useState(true);
+export const OrderDetailModal = ({ orderId, onClose, onUpdated, onDeleted }) => {
+  const [order,    setOrder]    = useState(null);
+  const [loading,  setLoading]  = useState(true);
+  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
     api.get(`/orders/admin/${orderId}`)
@@ -113,6 +114,20 @@ export const OrderDetailModal = ({ orderId, onClose, onUpdated }) => {
   const handleStatusUpdate = (updated) => {
     setOrder(updated);
     onUpdated?.(updated);
+  };
+
+  const handleDelete = async () => {
+    if (!window.confirm(`Order #${order.id} permanently delete ho jayega. Confirm?`)) return;
+    setDeleting(true);
+    try {
+      await api.delete(`/orders/admin/${order.id}`);
+      toast.success(`Order #${order.id} delete ho gaya.`);
+      onDeleted?.(order.id);
+      onClose();
+    } catch (err) {
+      toast.error(err.message || 'Delete failed.');
+      setDeleting(false);
+    }
   };
 
   // Close on backdrop click
@@ -151,13 +166,29 @@ export const OrderDetailModal = ({ orderId, onClose, onUpdated }) => {
               )}
             </div>
           </div>
-          <button
-            onClick={onClose}
-            style={{ minHeight: 'unset', minWidth: 'unset' }}
-            className="w-9 h-9 rounded-xl bg-gray-100 hover:bg-gray-200 flex items-center justify-center transition-colors"
-          >
-            <X size={16} />
-          </button>
+          <div className="flex items-center gap-2">
+            {/* Delete button */}
+            {order && (
+              <button
+                onClick={handleDelete}
+                disabled={deleting}
+                style={{ minHeight: 'unset', minWidth: 'unset' }}
+                className="w-9 h-9 rounded-xl bg-red-50 hover:bg-red-100 flex items-center justify-center transition-colors disabled:opacity-50"
+                title="Delete order"
+              >
+                {deleting
+                  ? <RefreshCw size={15} className="animate-spin text-red-400" />
+                  : <Trash2 size={15} className="text-red-500" />}
+              </button>
+            )}
+            <button
+              onClick={onClose}
+              style={{ minHeight: 'unset', minWidth: 'unset' }}
+              className="w-9 h-9 rounded-xl bg-gray-100 hover:bg-gray-200 flex items-center justify-center transition-colors"
+            >
+              <X size={16} />
+            </button>
+          </div>
         </div>
 
         {loading ? (
@@ -219,76 +250,146 @@ export const OrderDetailModal = ({ orderId, onClose, onUpdated }) => {
                   <span className="leading-relaxed">{order.address}</span>
                 </div>
                 {order.notes && (() => {
-                  const dealLines = order.notes.split(' | ').filter((n) => n.startsWith('[Deal:'));
-                  const userNote  = order.notes.split(' | ').find((n) => !n.startsWith('[Deal:'));
-                  return (
-                    <>
-                      {userNote && (
-                        <div className="bg-amber-50 border border-amber-100 rounded-xl px-3 py-2.5 text-sm text-amber-700 italic">
-                          📝 {userNote}
-                        </div>
-                      )}
-                      {dealLines.map((line, idx) => {
-                        const match = line.match(/^\[Deal: (.+?)\] (.+)$/);
-                        if (!match) return null;
-                        const [, dealTitle, itemsStr] = match;
-                        return (
-                          <div key={idx} className="bg-orange-50 border border-orange-100 rounded-xl px-3 py-2.5 text-sm text-orange-700">
-                            🎁 <strong>{dealTitle}</strong>: {itemsStr}
-                          </div>
-                        );
-                      })}
-                    </>
-                  );
+                  const userNote = order.notes.split(' | ').find((n) => !n.startsWith('[Deal:'));
+                  return userNote ? (
+                    <div className="bg-amber-50 border border-amber-100 rounded-xl px-3 py-2.5 text-sm text-amber-700 italic">
+                      📝 {userNote}
+                    </div>
+                  ) : null;
                 })()}
               </div>
             </div>
 
             {/* ── Order Items ── */}
-            <div className="px-5 mt-4">
-              <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-2.5">
-                Order Items ({order.items?.length})
-              </p>
-              <div className="bg-white border border-gray-100 rounded-2xl shadow-sm overflow-hidden">
-                {(order.items || []).map((item, idx) => (
-                  <div
-                    key={item.id}
-                    className={`flex items-center gap-3 px-4 py-3.5 ${idx !== order.items.length - 1 ? 'border-b border-gray-50' : ''}`}
-                  >
-                    <div className="w-11 h-11 rounded-xl overflow-hidden bg-orange-50 flex-shrink-0">
-                      {item.product?.imageUrl
-                        ? <img src={item.product.imageUrl} alt="" className="w-full h-full object-cover" />
-                        : <div className="w-full h-full flex items-center justify-center text-lg">🍽️</div>}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-semibold text-gray-900 truncate">{item.product?.name}</p>
-                      <p className="text-xs text-gray-400 mt-0.5">
-                        Rs. {Number(item.priceAtOrder).toLocaleString()} × {item.quantity}
-                      </p>
-                    </div>
-                    <p className="text-sm font-bold text-gray-900 flex-shrink-0">
-                      Rs. {(Number(item.priceAtOrder) * item.quantity).toLocaleString()}
-                    </p>
-                  </div>
-                ))}
+            {(() => {
+              const items = order.items || [];
 
-                {/* Bill summary */}
-                <div className="bg-gray-50 px-4 py-3.5 space-y-1.5">
-                  {(order.items || []).map((item) => (
-                    <div key={item.id} className="flex justify-between text-xs text-gray-500">
-                      <span>{item.product?.name} × {item.quantity}</span>
-                      <span>Rs. {(Number(item.priceAtOrder) * item.quantity).toLocaleString()}</span>
+              // Separate regular items from deal items
+              const regularItems = items.filter((i) => !i.dealId);
+
+              // Group deal items by dealCartKey (each unique key = one deal instance)
+              const dealGroups = {};
+              items.filter((i) => i.dealId).forEach((i) => {
+                const key = i.dealCartKey || String(i.dealId);
+                if (!dealGroups[key]) {
+                  dealGroups[key] = { dealId: i.dealId, dealTitle: i.dealTitle, items: [] };
+                }
+                dealGroups[key].items.push(i);
+              });
+              const dealGroupList = Object.values(dealGroups);
+
+              // Bill summary rows — deals show as one line per deal group
+              const billRows = [
+                ...regularItems.map((i) => ({
+                  label: `${i.product?.name || i.customName || 'Item'} × ${i.quantity}`,
+                  amount: Number(i.priceAtOrder) * i.quantity,
+                })),
+                ...dealGroupList.map((g) => {
+                  const total = g.items.reduce((s, i) => s + Number(i.priceAtOrder) * i.quantity, 0);
+                  return { label: `🎁 ${g.dealTitle} (deal)`, amount: total };
+                }),
+              ];
+
+              const itemCount = regularItems.length + dealGroupList.length;
+
+              return (
+                <div className="px-5 mt-4">
+                  <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-2.5">
+                    Order Items ({itemCount})
+                  </p>
+                  <div className="bg-white border border-gray-100 rounded-2xl shadow-sm overflow-hidden">
+
+                    {/* Regular items */}
+                    {regularItems.map((item, idx) => (
+                      <div
+                        key={item.id}
+                        className={`flex items-center gap-3 px-4 py-3.5 ${
+                          idx !== regularItems.length - 1 || dealGroupList.length > 0 ? 'border-b border-gray-50' : ''
+                        }`}
+                      >
+                        <div className="w-11 h-11 rounded-xl overflow-hidden bg-orange-50 flex-shrink-0">
+                          {item.product?.imageUrl
+                            ? <img src={item.product.imageUrl} alt="" className="w-full h-full object-cover" />
+                            : <div className="w-full h-full flex items-center justify-center text-lg">🍽️</div>}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-semibold text-gray-900 truncate">
+                            {item.product?.name || item.customName || 'Item'}
+                          </p>
+                          <p className="text-xs text-gray-400 mt-0.5">
+                            Rs. {Number(item.priceAtOrder).toLocaleString()} × {item.quantity}
+                          </p>
+                        </div>
+                        <p className="text-sm font-bold text-gray-900 flex-shrink-0">
+                          Rs. {(Number(item.priceAtOrder) * item.quantity).toLocaleString()}
+                        </p>
+                      </div>
+                    ))}
+
+                    {/* Deal groups */}
+                    {dealGroupList.map((group, gIdx) => {
+                      const dealTotal = group.items.reduce(
+                        (s, i) => s + Number(i.priceAtOrder) * i.quantity, 0
+                      );
+                      return (
+                        <div
+                          key={group.dealId + '_' + gIdx}
+                          className={`px-4 py-3.5 ${gIdx !== dealGroupList.length - 1 ? 'border-b border-gray-50' : ''}`}
+                        >
+                          {/* Deal header row */}
+                          <div className="flex items-center justify-between mb-2">
+                            <div className="flex items-center gap-2">
+                              <div className="w-11 h-11 rounded-xl bg-orange-100 flex items-center justify-center flex-shrink-0 text-lg">
+                                🎁
+                              </div>
+                              <div>
+                                <p className="text-sm font-bold text-orange-600">{group.dealTitle}</p>
+                                <p className="text-xs text-orange-400 mt-0.5">Deal</p>
+                              </div>
+                            </div>
+                            <p className="text-sm font-bold text-gray-900 flex-shrink-0">
+                              Rs. {dealTotal.toLocaleString()}
+                            </p>
+                          </div>
+                          {/* Deal contents */}
+                          <div className="ml-13 pl-1 space-y-1 border-l-2 border-orange-100 ml-[52px]">
+                            {group.items.map((item) => (
+                              <div key={item.id} className="flex items-center gap-2">
+                                <div className="w-6 h-6 rounded-lg overflow-hidden bg-orange-50 flex-shrink-0">
+                                  {item.product?.imageUrl
+                                    ? <img src={item.product.imageUrl} alt="" className="w-full h-full object-cover" />
+                                    : <div className="w-full h-full flex items-center justify-center text-[10px]">🍽️</div>}
+                                </div>
+                                <p className="text-xs text-gray-600 flex-1 truncate">
+                                  {item.product?.name || item.customName || 'Item'}
+                                </p>
+                                <p className="text-xs text-gray-400 flex-shrink-0">× {item.quantity}</p>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      );
+                    })}
+
+                    {/* Bill summary */}
+                    <div className="bg-gray-50 px-4 py-3.5 space-y-1.5 border-t border-gray-100">
+                      {billRows.map((row, i) => (
+                        <div key={i} className="flex justify-between text-xs text-gray-500">
+                          <span>{row.label}</span>
+                          <span>Rs. {row.amount.toLocaleString()}</span>
+                        </div>
+                      ))}
+                      <div className="border-t border-gray-200 pt-2 mt-2 flex justify-between items-center">
+                        <span className="text-sm font-bold text-gray-900">Total Bill</span>
+                        <span className="text-lg font-extrabold text-orange-600">
+                          Rs. {Number(order.totalAmount).toLocaleString()}
+                        </span>
+                      </div>
                     </div>
-                  ))}
-                  <div className="border-t border-gray-200 pt-2 mt-2 flex justify-between items-center">
-                    <span className="text-sm font-bold text-gray-900">Total Bill</span>
-                    <span className="text-lg font-extrabold text-orange-600">
-                      Rs. {Number(order.totalAmount).toLocaleString()}
-                    </span>
                   </div>
                 </div>
-              </div>
-            </div>
+              );
+            })()}
 
             {/* ── Payment Info ── */}
             <div className="px-5 mt-4">
@@ -379,6 +480,12 @@ const AdminOrdersPage = () => {
     setOrders((prev) => prev.map((o) => o.id === updated.id ? { ...o, status: updated.status } : o));
   };
 
+  // Remove order from list after delete
+  const handleModalDelete = (deletedId) => {
+    setOrders((prev) => prev.filter((o) => o.id !== deletedId));
+    setTotal((prev) => prev - 1);
+  };
+
   const totalPages = Math.ceil(total / LIMIT);
 
   return (
@@ -446,7 +553,19 @@ const AdminOrdersPage = () => {
                           <p className="text-xs text-gray-400">{order.user?.phone || order.user?.email}</p>
                         </td>
                         <td className="px-5 py-3.5 text-gray-500 max-w-[160px]">
-                          <p className="truncate text-xs">{order.items.map((i) => i.product?.name).join(', ')}</p>
+                          <p className="truncate text-xs">
+                            {(() => {
+                              const seen = new Set();
+                              return order.items.map((i) => {
+                                if (i.dealId) {
+                                  if (seen.has(i.dealCartKey || i.dealId)) return null;
+                                  seen.add(i.dealCartKey || i.dealId);
+                                  return `🎁 ${i.dealTitle}`;
+                                }
+                                return i.product?.name || i.customName;
+                              }).filter(Boolean).join(', ');
+                            })()}
+                          </p>
                           <p className="text-xs text-gray-400">{order.items.length} item(s)</p>
                         </td>
                         <td className="px-5 py-3.5 font-semibold text-gray-900">
@@ -489,7 +608,17 @@ const AdminOrdersPage = () => {
                         {new Date(order.createdAt).toLocaleString('en-PK', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
                       </p>
                       <p className="text-xs text-gray-500 mt-1 truncate max-w-[200px]">
-                        {order.items.map((i) => i.product?.name).join(', ')}
+                        {(() => {
+                          const seen = new Set();
+                          return order.items.map((i) => {
+                            if (i.dealId) {
+                              if (seen.has(i.dealCartKey || i.dealId)) return null;
+                              seen.add(i.dealCartKey || i.dealId);
+                              return `🎁 ${i.dealTitle}`;
+                            }
+                            return i.product?.name || i.customName;
+                          }).filter(Boolean).join(', ');
+                        })()}
                       </p>
                     </button>
                     <p className="font-bold text-orange-600 text-sm flex-shrink-0 ml-2">
@@ -540,6 +669,7 @@ const AdminOrdersPage = () => {
           orderId={selectedOrderId}
           onClose={() => setSelectedOrderId(null)}
           onUpdated={handleModalUpdate}
+          onDeleted={handleModalDelete}
         />
       )}
     </>

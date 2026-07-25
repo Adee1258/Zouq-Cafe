@@ -33,6 +33,7 @@ if (hasCloudinary) {
   uploadProduct  = multer({ storage: makeStorage('products',  800, 800) });
   uploadPrize    = multer({ storage: makeStorage('prizes',    400, 400) });
   uploadCategory = multer({ storage: makeStorage('categories', 600, 400) });
+  uploadBanner   = multer({ storage: makeStorage('banners',   1280, 720) }); // 16:9
 
 } else {
   // ── Local disk mode (dev fallback) ───────────────────────────────────────
@@ -61,7 +62,8 @@ if (hasCloudinary) {
   uploadProduct  = diskUpload;
   uploadPrize    = diskUpload;
   uploadCategory = diskUpload;
+  uploadBanner   = diskUpload;
   cloudinary     = null;
 }
 
-module.exports = { cloudinary, uploadProduct, uploadPrize, uploadCategory };
+module.exports = { cloudinary, uploadProduct, uploadPrize, uploadCategory, uploadBanner };

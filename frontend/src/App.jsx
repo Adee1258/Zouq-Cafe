@@ -69,6 +69,12 @@ const AdminAnalyticsPage = lazy(() => import('./pages/admin/AnalyticsPage'));
 const AdminSpinPage = lazy(() => import('./pages/admin/SpinManagePage'));
 const AdminDealsPage   = lazy(() => import('./pages/admin/DealsPage'));
 const AdminCustomersPage = lazy(() => import('./pages/admin/CustomersPage'));
+const AdminPromoCodesPage = lazy(() => import('./pages/admin/PromoCodesPage'));
+const AdminProfilePage    = lazy(() => import('./pages/admin/ProfilePage'));
+const AdminLuckyDrawPage  = lazy(() => import('./pages/admin/LuckyDrawPage'));
+
+// Customer pages (lucky draw)
+const LuckyDrawPage = lazy(() => import('./pages/customer/LuckyDrawPage'));
 
 // CartDrawer context — lets Navbar open the cart from anywhere
 import { createContext, useContext } from 'react';
@@ -87,6 +93,8 @@ const App = () => {
   // On app load — silently validate stored tokens and refresh user data
   // This keeps the session alive across browser restarts without re-login
   useEffect(() => {
+    // Only call fetchMe if that specific store has a token
+    // This prevents admin token from accidentally refreshing customer store
     if (customerToken) fetchCustomer();
     if (adminToken)    fetchAdmin();
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
@@ -121,6 +129,7 @@ const App = () => {
               <Route path="/cart" element={<CartPage />} />
               <Route path="/spin" element={<SpinPage />} />
               <Route path="/deals" element={<HotDealsPage />} />
+              <Route path="/lucky-draw" element={<LuckyDrawPage />} />
 
               {/* Auth-required customer routes */}
               <Route
@@ -180,11 +189,14 @@ const App = () => {
               <Route path="orders" element={<AdminOrdersPage />} />
               <Route path="products" element={<AdminProductsPage />} />
               <Route path="categories" element={<AdminCategoriesPage />} />
-              <Route path="reports" element={<AdminReportsPage />} />
+              <Route path="reports"   element={<AdminReportsPage />} />
               <Route path="analytics" element={<AdminAnalyticsPage />} />
-              <Route path="spin" element={<AdminSpinPage />} />
-              <Route path="deals" element={<AdminDealsPage />} />
+              <Route path="spin"      element={<AdminSpinPage />} />
+              <Route path="lucky-draw" element={<AdminLuckyDrawPage />} />
+              <Route path="deals"     element={<AdminDealsPage />} />
               <Route path="customers" element={<AdminCustomersPage />} />
+              <Route path="promos"    element={<AdminPromoCodesPage />} />
+              <Route path="profile"   element={<AdminProfilePage />} />
             </Route>
 
             {/* Catch-all — proper 404 inside customer layout */}

@@ -9,6 +9,7 @@ const CartDrawer = ({ open, onClose }) => {
   const addItem = useCartStore((s) => s.addItem);
   const removeItem = useCartStore((s) => s.removeItem);
   const deleteItem = useCartStore((s) => s.deleteItem);
+  const setQuantity = useCartStore((s) => s.setQuantity);
   const totalPrice = useCartStore((s) => s.totalPrice());
   const navigate = useNavigate();
 
@@ -119,7 +120,10 @@ const CartDrawer = ({ open, onClose }) => {
                   </button>
                   <span className="w-6 text-center font-bold text-sm">{item.quantity}</span>
                   <button
-                    onClick={() => addItem(item)}
+                    onClick={() => item.isDeal
+                      ? setQuantity(item.id, item.quantity + 1)
+                      : addItem(item)
+                    }
                     className="p-1.5 rounded-lg bg-orange-500 text-white hover:bg-orange-600 min-h-[32px] min-w-[32px] flex items-center justify-center"
                     aria-label="Add one more"
                   >

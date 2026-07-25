@@ -7,6 +7,8 @@ datasource db {
   url       = env("DATABASE_URL")
 }
 
+// ─── Enums ────────────────────────────────────────────────────────────────────
+
 enum Role {
   CUSTOMER
   ADMIN
@@ -32,17 +34,31 @@ enum PaymentStatus {
   FAILED
 }
 
+enum DiscountType {
+  PERCENTAGE
+  FLAT
+}
+
+// ─── Models ───────────────────────────────────────────────────────────────────
+
 model User {
-  id           Int           @id @default(autoincrement())
-  name         String
-  phone        String?       @unique
-  email        String?       @unique
-  passwordHash String        @map("password_hash")
-  address      String?
-  role         Role          @default(CUSTOMER)
-  createdAt    DateTime      @default(now()) @map("created_at")
-  orders       Order[]
-  spinHistory  SpinHistory[]
+  id             Int                  @id @default(autoincrement())
+  name           String
+  phone          String?              @unique
+  email          String?              @unique
+  passwordHash   String               @map("password_hash")
+  address        String?
+  role           Role                 @default(CUSTOMER)
+  pointsBalance  Int                  @default(0) @map("points_balance")
+  createdAt      DateTime             @default(now()) @map("created_at")
+  orders         Order[]
+  spinHistory    SpinHistory[]
+  promoUsages    PromoUsage[]
+  pointsHistory  PointsTransaction[]
+  pushSubs       PushSubscription[]
+  resetTokens    PasswordResetToken[]
+  drawEntries    LuckyDrawEntry[]
+  drawWins       LuckyDrawWinner[]
 
   @@map("users")
 }
@@ -76,18 +92,22 @@ model Product {
 }
 
 model Order {
-  id          Int         @id @default(autoincrement())
-  userId      Int         @map("user_id")
-  totalAmount Decimal     @db.Decimal(10, 2) @map("total_amount")
-  paymentType PaymentType @map("payment_type")
-  status      OrderStatus @default(PENDING)
-  address     String
-  notes       String?
-  createdAt   DateTime    @default(now()) @map("created_at")
-  updatedAt   DateTime    @updatedAt @map("updated_at")
-  user        User        @relation(fields: [userId], references: [id])
-  items       OrderItem[]
-  payment     Payment?
+  id             Int         @id @default(autoincrement())
+  userId         Int         @map("user_id")
+  totalAmount    Decimal     @db.Decimal(10, 2) @map("total_amount")
+  discountAmount Decimal     @default(0) @db.Decimal(10, 2) @map("discount_amount")
+  promoCode      String?     @map("promo_code")
+  paymentType    PaymentType @map("payment_type")
+  status         OrderStatus @default(PENDING)
+  address        String
+  notes          String?
+  createdAt      DateTime    @default(now()) @map("created_at")
+  updatedAt      DateTime    @updatedAt @map("updated_at")
+  user           User        @relation(fields: [userId], references: [id])
+  items          OrderItem[]
+  payment        Payment?
+  promoUsage     PromoUsage?
+  pointsTx       PointsTransaction[]
 
   @@index([userId])
   @@index([status])
@@ -98,12 +118,19 @@ model Order {
 model OrderItem {
   id           Int     @id @default(autoincrement())
   orderId      Int     @map("order_id")
-  productId    Int     @map("product_id")
+  productId    Int?    @map("product_id")
   quantity     Int
   priceAtOrder Decimal @db.Decimal(10, 2) @map("price_at_order")
+  // Deal grouping — null for regular items
+  dealId       Int?    @map("deal_id")
+  dealTitle    String? @map("deal_title")
+  dealCartKey  String? @map("deal_cart_key")   // groups items of same deal instance
+  customName   String? @map("custom_name")      // for custom (non-menu) deal items
   order        Order   @relation(fields: [orderId], references: [id])
-  product      Product @relation(fields: [productId], references: [id])
+  product      Product? @relation(fields: [productId], references: [id])
 
+  @@index([orderId])
+  @@index([dealId])
   @@map("order_items")
 }
 
@@ -168,14 +195,27 @@ model Deal {
 model DealItem {
   id          Int      @id @default(autoincrement())
   dealId      Int      @map("deal_id")
-  productId   Int?     @map("product_id")   // null for custom items
+  productId   Int?     @map("product_id")
   quantity    Int      @default(1)
-  customName  String?  @map("custom_name")  // for manually added items
-  customPrice Decimal? @db.Decimal(10, 2) @map("custom_price") // for manually added items
+  customName  String?  @map("custom_name")
+  customPrice Decimal? @db.Decimal(10, 2) @map("custom_price")
   deal        Deal     @relation(fields: [dealId], references: [id], onDelete: Cascade)
   product     Product? @relation(fields: [productId], references: [id])
 
   @@map("deal_items")
+}
+
+model PushSubscription {
+  id        Int      @id @default(autoincrement())
+  userId    Int      @map("user_id")
+  endpoint  String   @unique
+  p256dh    String
+  auth      String
+  createdAt DateTime @default(now()) @map("created_at")
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("push_subscriptions")
 }
 
 model AppConfig {
@@ -185,4 +225,133 @@ model AppConfig {
   updatedAt DateTime @updatedAt @map("updated_at")
 
   @@map("app_config")
+}
+
+model PromoCode {
+  id             Int          @id @default(autoincrement())
+  code           String       @unique
+  description    String?
+  discountType   DiscountType @map("discount_type")
+  discountValue  Decimal      @db.Decimal(10, 2) @map("discount_value")
+  minOrderAmount Decimal?     @db.Decimal(10, 2) @map("min_order_amount")
+  maxDiscount    Decimal?     @db.Decimal(10, 2) @map("max_discount")    // cap for PERCENTAGE
+  usageLimit     Int?         @map("usage_limit")                         // null = unlimited
+  usageCount     Int          @default(0) @map("usage_count")
+  perUserLimit   Int          @default(1) @map("per_user_limit")
+  isActive       Boolean      @default(true) @map("is_active")
+  expiresAt      DateTime?    @map("expires_at")
+  // Item restrictions — empty arrays = applies to entire order
+  applicableProductIds Int[]  @default([]) @map("applicable_product_ids")
+  applicableCategoryIds Int[] @default([]) @map("applicable_category_ids")
+  createdAt      DateTime     @default(now()) @map("created_at")
+  usages         PromoUsage[]
+
+  @@index([code])
+  @@index([isActive])
+  @@map("promo_codes")
+}
+
+model PromoUsage {
+  id        Int       @id @default(autoincrement())
+  promoId   Int       @map("promo_id")
+  userId    Int       @map("user_id")
+  orderId   Int       @unique @map("order_id")
+  discount  Decimal   @db.Decimal(10, 2)
+  usedAt    DateTime  @default(now()) @map("used_at")
+  promo     PromoCode @relation(fields: [promoId], references: [id])
+  user      User      @relation(fields: [userId], references: [id])
+  order     Order     @relation(fields: [orderId], references: [id])
+
+  @@index([promoId])
+  @@index([userId])
+  @@map("promo_usages")
+}
+
+// ─── Lucky Draw (Qurандazi) ───────────────────────────────────────────────────
+
+model LuckyDraw {
+  id              Int               @id @default(autoincrement())
+  title           String            @default("Lucky Draw")
+  description     String?
+  bannerUrl       String?           @map("banner_url")
+  minSpendAmount  Decimal           @db.Decimal(10, 2) @map("min_spend_amount")
+  isActive        Boolean           @default(true) @map("is_active")
+  startsAt        DateTime          @map("starts_at")
+  endsAt          DateTime          @map("ends_at")
+  drawnAt         DateTime?         @map("drawn_at")
+  createdAt       DateTime          @default(now()) @map("created_at")
+  updatedAt       DateTime          @updatedAt @map("updated_at")
+  entries         LuckyDrawEntry[]
+  winners         LuckyDrawWinner[]
+
+  @@map("lucky_draws")
+}
+
+model LuckyDrawEntry {
+  id          Int       @id @default(autoincrement())
+  drawId      Int       @map("draw_id")
+  userId      Int       @map("user_id")
+  totalSpent  Decimal   @db.Decimal(10, 2) @map("total_spent")  // cumulative spend in draw period
+  qualifiedAt DateTime  @default(now()) @map("qualified_at")
+  draw        LuckyDraw @relation(fields: [drawId], references: [id], onDelete: Cascade)
+  user        User      @relation(fields: [userId], references: [id])
+
+  @@unique([drawId, userId])
+  @@index([drawId])
+  @@index([userId])
+  @@map("lucky_draw_entries")
+}
+
+model LuckyDrawWinner {
+  id        Int       @id @default(autoincrement())
+  drawId    Int       @map("draw_id")
+  userId    Int       @map("user_id")
+  prize     String
+  wonAt     DateTime  @default(now()) @map("won_at")
+  draw      LuckyDraw @relation(fields: [drawId], references: [id], onDelete: Cascade)
+  user      User      @relation(fields: [userId], references: [id])
+
+  @@index([drawId])
+  @@map("lucky_draw_winners")
+}
+
+// ─── Password Reset ───────────────────────────────────────────────────────────
+
+model PasswordResetToken {
+  id        Int      @id @default(autoincrement())
+  userId    Int      @map("user_id")
+  token     String   @unique
+  expiresAt DateTime @map("expires_at")
+  used      Boolean  @default(false)
+  createdAt DateTime @default(now()) @map("created_at")
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([token])
+  @@index([userId])
+  @@map("password_reset_tokens")
+}
+
+// ─── Loyalty Points ───────────────────────────────────────────────────────────
+
+enum PointsTxType {
+  EARN
+  REDEEM
+  REVOKE
+  MANUAL
+}
+
+model PointsTransaction {
+  id        Int          @id @default(autoincrement())
+  userId    Int          @map("user_id")
+  orderId   Int?         @map("order_id")
+  type      PointsTxType
+  points    Int          // positive = earned/added, negative = redeemed/deducted
+  note      String?
+  createdAt DateTime     @default(now()) @map("created_at")
+  user      User         @relation(fields: [userId], references: [id])
+  order     Order?       @relation(fields: [orderId], references: [id])
+
+  @@index([userId])
+  @@index([orderId])
+  @@map("points_transactions")
 }

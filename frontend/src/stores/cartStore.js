@@ -24,18 +24,29 @@ const useCartStore = create((set, get) => ({
     set({ items: updated });
   },
 
-  // Add a deal as a single bundle item at the deal price
-  // dealId is used as the cart key — only one of each deal at a time
+  // Add a deal as a bundle item at the deal price.
+  // If the same deal is already in the cart, increment its quantity.
   addDeal: (deal) => {
     const items = get().items;
-    // Remove any existing instance of this deal first
-    const without = items.filter((i) => !(i.isDeal && i.dealId === deal.id));
+    const cartKey = `deal-${deal.id}`;
+    const existing = items.find((i) => i.isDeal && i.dealId === deal.id);
+
+    if (existing) {
+      // Deal already in cart — just increment quantity
+      const updated = items.map((i) =>
+        i.isDeal && i.dealId === deal.id ? { ...i, quantity: i.quantity + 1 } : i
+      );
+      saveCart(updated);
+      set({ items: updated });
+      return;
+    }
+
     const dealItem = {
-      id:       `deal-${deal.id}`,      // unique cart key
+      id:       cartKey,
       dealId:   deal.id,
       isDeal:   true,
       name:     deal.title,
-      price:    Number(deal.dealPrice), // ← actual deal price, not full price
+      price:    Number(deal.dealPrice),
       imageUrl: deal.imageUrl || null,
       quantity: 1,
       // Keep ALL items — both menu products and custom items
@@ -47,8 +58,8 @@ const useCartStore = create((set, get) => ({
         type:        it.type || (it.productId ? 'menu' : 'custom'),
       })),
     };
-    saveCart([...without, dealItem]);
-    set({ items: [...without, dealItem] });
+    saveCart([...items, dealItem]);
+    set({ items: [...items, dealItem] });
   },
 
   // Decrement or remove

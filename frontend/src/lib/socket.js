@@ -5,14 +5,16 @@ const SOCKET_URL = import.meta.env.VITE_SOCKET_URL || 'http://localhost:5000';
 
 /**
  * Reads the active JWT token from localStorage.
- * Admin token takes priority when on admin pages.
+ * Uses the same guard as api.js: /admin/login is an AUTH page,
+ * not inside the admin panel — it must never send the admin token.
  */
 const getActiveToken = () => {
-  const isAdminPage = window.location.pathname.startsWith('/admin');
-  if (isAdminPage) {
-    return localStorage.getItem('zouq_admin_token') || localStorage.getItem('zouq_customer_token');
+  const path = window.location.pathname;
+  const isInsideAdminPanel = path.startsWith('/admin') && path !== '/admin/login';
+  if (isInsideAdminPanel) {
+    return localStorage.getItem('zouq_admin_token') || null;
   }
-  return localStorage.getItem('zouq_customer_token') || localStorage.getItem('zouq_admin_token');
+  return localStorage.getItem('zouq_customer_token') || null;
 };
 
 const socket = io(SOCKET_URL, {

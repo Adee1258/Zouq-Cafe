@@ -7,7 +7,7 @@ import Button from '../../components/ui/Button';
 import Input from '../../components/ui/Input';
 
 const LoginPage = () => {
-  const [loginMethod, setLoginMethod] = useState('email'); // 'email' | 'phone'
+  const [loginMethod, setLoginMethod] = useState('phone'); // 'phone' | 'email'
   const [showPassword, setShowPassword] = useState(false);
   const [form, setForm] = useState({ email: '', phone: '', password: '' });
   const [errors, setErrors] = useState({});
@@ -44,15 +44,17 @@ const LoginPage = () => {
     const result = await login(credentials);
     if (result.success) {
       toast.success('Welcome back! 👋');
-      // Route by role — never let a customer land on /admin
-      const loggedInUser = useAuthStore.getState().user;
-      if (loggedInUser?.role === 'ADMIN') {
-        navigate('/admin', { replace: true });
-      } else {
-        navigate(from, { replace: true });
-      }
+      // Backend already blocks admin accounts via /auth/login (returns 403).
+      // authStore.login also double-checks role and rejects ADMIN users.
+      // So at this point we are guaranteed to have a CUSTOMER — go to "from".
+      navigate(from, { replace: true });
     } else {
-      toast.error(result.message);
+      // Show a helpful hint if the user is trying to log in as admin
+      if (result.message?.toLowerCase().includes('admin')) {
+        toast.error(result.message + ' Go to /admin/login instead.');
+      } else {
+        toast.error(result.message);
+      }
     }
   };
 
@@ -70,19 +72,8 @@ const LoginPage = () => {
             <p className="text-gray-500 text-sm mt-1">Login to your Zouq Cafe account</p>
           </div>
 
-          {/* Login method toggle */}
+          {/* Login method toggle — Phone first */}
           <div className="flex bg-gray-100 rounded-xl p-1 mb-6">
-            <button
-              type="button"
-              onClick={() => setLoginMethod('email')}
-              className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg text-sm font-medium transition-all ${
-                loginMethod === 'email'
-                  ? 'bg-white text-orange-600 shadow-sm'
-                  : 'text-gray-500 hover:text-gray-700'
-              }`}
-            >
-              <Mail size={15} /> Email
-            </button>
             <button
               type="button"
               onClick={() => setLoginMethod('phone')}
@@ -94,10 +85,33 @@ const LoginPage = () => {
             >
               <Phone size={15} /> Phone
             </button>
+            <button
+              type="button"
+              onClick={() => setLoginMethod('email')}
+              className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg text-sm font-medium transition-all ${
+                loginMethod === 'email'
+                  ? 'bg-white text-orange-600 shadow-sm'
+                  : 'text-gray-500 hover:text-gray-700'
+              }`}
+            >
+              <Mail size={15} /> Email
+            </button>
           </div>
 
-          <form onSubmit={handleSubmit} noValidate className="space-y-4">
-            {loginMethod === 'email' ? (
+          <form onSubmit={handleSubmit} noValidate autoComplete="off" className="space-y-4">
+            {loginMethod === 'phone' ? (
+              <Input
+                label="Phone number"
+                type="tel"
+                icon={Phone}
+                placeholder="03001234567"
+                value={form.phone}
+                onChange={(e) => setForm({ ...form, phone: e.target.value })}
+                error={errors.phone}
+                required
+                autoComplete="off"
+              />
+            ) : (
               <Input
                 label="Email address"
                 type="email"
@@ -107,19 +121,7 @@ const LoginPage = () => {
                 onChange={(e) => setForm({ ...form, email: e.target.value })}
                 error={errors.email}
                 required
-                autoComplete="email"
-              />
-            ) : (
-              <Input
-                label="Phone number"
-                type="tel"
-                icon={Phone}
-                placeholder="+92 300 0000000"
-                value={form.phone}
-                onChange={(e) => setForm({ ...form, phone: e.target.value })}
-                error={errors.phone}
-                required
-                autoComplete="tel"
+                autoComplete="off"
               />
             )}
 
@@ -135,7 +137,7 @@ const LoginPage = () => {
                   placeholder="••••••••"
                   value={form.password}
                   onChange={(e) => setForm({ ...form, password: e.target.value })}
-                  autoComplete="current-password"
+                  autoComplete="new-password"
                   className={`w-full rounded-xl border border-gray-200 bg-white pl-10 pr-11 py-3 text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-orange-400 focus:border-transparent transition-all min-h-[44px] ${errors.password ? 'border-red-400' : ''}`}
                 />
                 <button

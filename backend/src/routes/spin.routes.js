@@ -2,7 +2,7 @@
 const express = require('express');
 const router = express.Router();
 const { protect } = require('../middleware/auth');
-const { getPrizes, spin, getMyHistory, getSpinConfig } = require('../controllers/spin.controller');
+const { getPrizes, spin, getMyHistory, useMyPrize, getSpinConfig } = require('../controllers/spin.controller');
 
 // Public (but getSpinConfig needs optional auth for spins-left count)
 router.get('/prizes', getPrizes);
@@ -16,7 +16,8 @@ router.get('/config', (req, res, next) => {
 }, getSpinConfig);
 
 // Authenticated
-router.post('/', protect, spin);
-router.get('/history', protect, getMyHistory);
+router.post('/',                    protect, spin);
+router.get('/history',              protect, getMyHistory);
+router.post('/history/:id/use',     protect, useMyPrize);
 
 module.exports = router;

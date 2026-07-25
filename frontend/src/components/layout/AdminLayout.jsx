@@ -3,33 +3,58 @@ import { Link, useNavigate, useLocation, Outlet } from 'react-router-dom';
 import {
   LayoutDashboard, Package, Tag, ClipboardList, BarChart2,
   PieChart, Gift, LogOut, Menu, X, ChevronRight, Flame,
-  Users, Bell,
+  Users, Bell, Ticket, UserCircle, BellRing,
 } from 'lucide-react';
+import toast from 'react-hot-toast';
 import useAdminAuthStore from '../../stores/adminAuthStore';
 import useNewOrderNotifier from '../../hooks/useNewOrderNotifier';
+import useNewSpinNotifier from '../../hooks/useNewSpinNotifier';
+import usePushNotifications from '../../lib/usePushNotifications';
 import api from '../../lib/api';
 
 const navItems = [
-  { to: '/admin',            label: 'Dashboard', icon: LayoutDashboard, exact: true },
-  { to: '/admin/orders',     label: 'Orders',    icon: ClipboardList },
-  { to: '/admin/customers',  label: 'Customers', icon: Users },
-  { to: '/admin/products',   label: 'Products',  icon: Package },
-  { to: '/admin/categories', label: 'Categories',icon: Tag },
-  { to: '/admin/deals',      label: 'Hot Deals', icon: Flame },
-  { to: '/admin/reports',    label: 'Reports',   icon: BarChart2 },
-  { to: '/admin/analytics',  label: 'Analytics', icon: PieChart },
-  { to: '/admin/spin',       label: 'Spin & Win',icon: Gift },
+  { to: '/admin',            label: 'Dashboard',    icon: LayoutDashboard, exact: true },
+  { to: '/admin/orders',     label: 'Orders',       icon: ClipboardList },
+  { to: '/admin/customers',  label: 'Customers',    icon: Users },
+  { to: '/admin/products',   label: 'Products',     icon: Package },
+  { to: '/admin/categories', label: 'Categories',   icon: Tag },
+  { to: '/admin/deals',      label: 'Hot Deals',    icon: Flame },
+  { to: '/admin/promos',     label: 'Promo Codes',  icon: Ticket },
+  { to: '/admin/reports',    label: 'Reports',      icon: BarChart2 },
+  { to: '/admin/analytics',  label: 'Analytics',    icon: PieChart },
+  { to: '/admin/spin',       label: 'Spin & Win',   icon: Gift },
+  { to: '/admin/lucky-draw', label: 'Lucky Draw',    icon: Ticket },
+  { to: '/admin/profile',    label: 'My Profile',   icon: UserCircle },
 ];
 
 const AdminLayout = () => {
-  const [sidebarOpen,   setSidebarOpen]   = useState(false);
-  const [pendingCount,  setPendingCount]  = useState(0);
-  const [newOrderFlash, setNewOrderFlash] = useState(false);
+  const [sidebarOpen,    setSidebarOpen]   = useState(false);
+  const [pendingCount,   setPendingCount]  = useState(0);
+  const [newOrderFlash,  setNewOrderFlash] = useState(false);
+  const [unredeemedSpin, setUnredeemedSpin] = useState(0);
+  const [newSpinFlash,   setNewSpinFlash]  = useState(false);
   const { user, logout } = useAdminAuthStore();
   const navigate  = useNavigate();
   const location  = useLocation();
 
-  // Fetch pending count on mount and after new orders arrive
+  // Push notifications
+  const { supported, subscribed, loading: pushLoading, subscribe, unsubscribe, registerSW } = usePushNotifications();
+
+  // Register service worker once on mount
+  useEffect(() => { registerSW(); }, [registerSW]);
+
+  const handlePushToggle = async () => {
+    if (subscribed) {
+      const ok = await unsubscribe();
+      if (ok) toast.success('Push notifications disabled.');
+    } else {
+      const ok = await subscribe();
+      if (ok) toast.success('Push notifications enabled! 🔔');
+      else     toast.error('Could not enable notifications. Check browser settings.');
+    }
+  };
+
+  // Fetch pending order count on mount and route change
   const fetchPendingCount = async () => {
     try {
       const res = await api.get('/orders/admin?status=PENDING&limit=1&page=1');
@@ -37,13 +62,37 @@ const AdminLayout = () => {
     } catch { /* ignore */ }
   };
 
-  useEffect(() => { fetchPendingCount(); }, [location.pathname]);
+  // Fetch unredeemed spin count on mount
+  const fetchUnredeemedSpins = async () => {
+    try {
+      const res = await api.get('/admin/spin/history?redeemed=false&limit=1');
+      setUnredeemedSpin(res.data.data.total || 0);
+    } catch { /* ignore */ }
+  };
 
-  // New order notifier — runs every 30s
+  useEffect(() => {
+    fetchPendingCount();
+    fetchUnredeemedSpins();
+  }, [location.pathname]);
+
+  // New order notifier — real-time + polling fallback
   useNewOrderNotifier((newCount) => {
     setPendingCount((prev) => prev + newCount);
     setNewOrderFlash(true);
     setTimeout(() => setNewOrderFlash(false), 3000);
+  });
+
+  // Spin prize notifier — real-time + polling fallback
+  useNewSpinNotifier(({ selfRedeemed } = {}) => {
+    if (selfRedeemed) {
+      // Customer used their own prize — reduce count
+      setUnredeemedSpin((prev) => Math.max(0, prev - 1));
+    } else {
+      // New prize won
+      setUnredeemedSpin((prev) => prev + 1);
+      setNewSpinFlash(true);
+      setTimeout(() => setNewSpinFlash(false), 4000);
+    }
   });
 
   const handleLogout = () => {
@@ -92,6 +141,7 @@ const AdminLayout = () => {
           {navItems.map(({ to, label, icon: Icon, exact }) => {
             const active = isActive({ to, exact });
             const isOrders = to === '/admin/orders';
+            const isSpin   = to === '/admin/spin';
 
             return (
               <Link
@@ -115,6 +165,16 @@ const AdminLayout = () => {
                         : 'bg-red-500 text-white'
                     }`}>
                       {pendingCount > 99 ? '99+' : pendingCount}
+                    </span>
+                  )}
+                  {/* Unredeemed spin prizes badge */}
+                  {isSpin && unredeemedSpin > 0 && (
+                    <span className={`text-[10px] font-extrabold px-1.5 py-0.5 rounded-full leading-none transition-all ${
+                      newSpinFlash
+                        ? 'bg-yellow-400 text-yellow-900 scale-110 animate-pulse'
+                        : 'bg-purple-500 text-white'
+                    }`}>
+                      {unredeemedSpin > 99 ? '99+' : unredeemedSpin}
                     </span>
                   )}
                   {active && <ChevronRight size={14} />}
@@ -192,6 +252,25 @@ const AdminLayout = () => {
             >
               View Site ↗
             </Link>
+
+            {/* Push notification toggle */}
+            {supported && (
+              <button
+                onClick={handlePushToggle}
+                disabled={pushLoading}
+                title={subscribed ? 'Notifications ON — click to disable' : 'Enable push notifications'}
+                style={{ minHeight: 'unset', minWidth: 'unset' }}
+                className={`w-9 h-9 rounded-xl flex items-center justify-center transition-all ${
+                  subscribed
+                    ? 'bg-orange-500 text-white hover:bg-orange-600'
+                    : 'bg-gray-100 text-gray-500 hover:bg-orange-50 hover:text-orange-500'
+                } ${pushLoading ? 'opacity-50 cursor-wait' : ''}`}
+              >
+                {subscribed
+                  ? <BellRing size={16} />
+                  : <Bell size={16} />}
+              </button>
+            )}
           </div>
         </header>
 

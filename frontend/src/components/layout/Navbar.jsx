@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import {
   ShoppingCart, Menu, X, User, LogOut, Gift, Home,
-  UtensilsCrossed, ClipboardList, Flame,
+  UtensilsCrossed, ClipboardList, Flame, Ticket,
 } from 'lucide-react';
 import useAuthStore from '../../stores/authStore';
 import useCartStore from '../../stores/cartStore';
@@ -22,11 +22,12 @@ const Navbar = ({ onCartOpen }) => {
   };
 
   const navLinks = [
-    { to: '/', label: 'Home', icon: Home },
-    { to: '/menu', label: 'Menu', icon: UtensilsCrossed },
-    { to: '/deals', label: 'Hot Deals', icon: Flame },
-    { to: '/spin', label: 'Spin & Win', icon: Gift },
-    { to: '/orders', label: 'My Orders', icon: ClipboardList, auth: true },
+    { to: '/',            label: 'Home',        icon: Home },
+    { to: '/menu',        label: 'Menu',        icon: UtensilsCrossed },
+    { to: '/deals',       label: 'Hot Deals',   icon: Flame },
+    { to: '/lucky-draw',  label: 'Lucky Draw',  icon: Ticket },
+    { to: '/spin',        label: 'Spin & Win',  icon: Gift },
+    { to: '/orders',      label: 'My Orders',   icon: ClipboardList, auth: true },
   ];
 
   const isActive = (path) =>
@@ -227,18 +228,17 @@ const Navbar = ({ onCartOpen }) => {
           </button>
 
           <Link
-            to="/deals"
+            to="/lucky-draw"
             className={`flex flex-col items-center gap-0.5 px-3 py-2 rounded-lg transition-colors min-w-[56px] ${
-              isActive('/deals') ? 'text-orange-500' : 'text-gray-500'
+              isActive('/lucky-draw') ? 'text-orange-500' : 'text-gray-500'
             }`}
           >
-            <Flame size={20} />
-            <span className="text-[10px] font-medium">Deals</span>
+            <Ticket size={20} />
+            <span className="text-[10px] font-medium">Draw</span>
           </Link>
 
           <Link
-            to={user ? '/profile' : '/login'}
-            className={`flex flex-col items-center gap-0.5 px-3 py-2 rounded-lg transition-colors min-w-[56px] ${
+            to={user ? '/profile' : '/login'}            className={`flex flex-col items-center gap-0.5 px-3 py-2 rounded-lg transition-colors min-w-[56px] ${
               (isActive('/profile') || isActive('/login')) ? 'text-orange-500' : 'text-gray-500'
             }`}
           >

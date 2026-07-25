@@ -2,7 +2,7 @@ const express = require('express');
 const { body } = require('express-validator');
 const router = express.Router();
 
-const { signup, login, adminLogin, getMe, updateMe, changePassword } = require('../controllers/auth.controller');
+const { signup, login, adminLogin, getMe, updateMe, changePassword, forgotPassword, resetPassword } = require('../controllers/auth.controller');
 const { protect } = require('../middleware/auth');
 const validate = require('../middleware/validate');
 
@@ -43,17 +43,33 @@ const loginRules = [
 
 // ── Admin login validation ────────────────────────────────────────────────────
 const adminLoginRules = [
-  body('email')
-    .notEmpty().withMessage('Email is required.')
-    .isEmail().withMessage('Invalid email address.'),
+  body('username')
+    .notEmpty().withMessage('Username is required.')
+    .isString().withMessage('Invalid username.'),
   body('password')
     .notEmpty().withMessage('Password is required.'),
+];
+
+// ── Forgot / Reset password validation ───────────────────────────────────────
+const forgotRules = [
+  body('email').optional({ nullable: true, checkFalsy: true }).isEmail(),
+  body('phone').optional({ nullable: true, checkFalsy: true }).isString(),
+];
+
+const resetRules = [
+  body('code').notEmpty().withMessage('Reset code is required.').isLength({ min: 6, max: 6 }).withMessage('Code must be 6 digits.'),
+  body('newPassword').notEmpty().withMessage('New password is required.').isLength({ min: 6 }).withMessage('Password must be at least 6 characters.'),
+  body('email').optional({ nullable: true, checkFalsy: true }).isEmail(),
+  body('phone').optional({ nullable: true, checkFalsy: true }).isString(),
 ];
 
 // ── Routes ────────────────────────────────────────────────────────────────────
 router.post('/signup', signupRules, validate, signup);
 router.post('/login', loginRules, validate, login);
 router.post('/admin/login', adminLoginRules, validate, adminLogin);
+
+router.post('/forgot-password', forgotRules, validate, forgotPassword);
+router.post('/reset-password',  resetRules,  validate, resetPassword);
 
 router.get('/me', protect, getMe);
 router.patch('/me', protect, updateMe);

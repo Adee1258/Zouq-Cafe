@@ -8,7 +8,7 @@ import Input from '../../components/ui/Input';
 
 const SignupPage = () => {
   const [showPassword, setShowPassword] = useState(false);
-  const [contactMethod, setContactMethod] = useState('email'); // 'email' | 'phone'
+  const [contactMethod, setContactMethod] = useState('phone'); // 'phone' | 'email'
   const [form, setForm] = useState({
     name: '',
     email: '',
@@ -124,20 +124,6 @@ const SignupPage = () => {
                 <button
                   type="button"
                   onClick={() => {
-                    setContactMethod('email');
-                    setErrors((prev) => ({ ...prev, email: '', phone: '' }));
-                  }}
-                  className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg text-sm font-medium transition-all ${
-                    contactMethod === 'email'
-                      ? 'bg-white text-orange-600 shadow-sm'
-                      : 'text-gray-500 hover:text-gray-700'
-                  }`}
-                >
-                  <Mail size={15} /> Email
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
                     setContactMethod('phone');
                     setErrors((prev) => ({ ...prev, email: '', phone: '' }));
                   }}
@@ -149,21 +135,23 @@ const SignupPage = () => {
                 >
                   <Phone size={15} /> Phone
                 </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setContactMethod('email');
+                    setErrors((prev) => ({ ...prev, email: '', phone: '' }));
+                  }}
+                  className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg text-sm font-medium transition-all ${
+                    contactMethod === 'email'
+                      ? 'bg-white text-orange-600 shadow-sm'
+                      : 'text-gray-500 hover:text-gray-700'
+                  }`}
+                >
+                  <Mail size={15} /> Email
+                </button>
               </div>
 
-              {contactMethod === 'email' ? (
-                <Input
-                  label="Email address"
-                  type="email"
-                  icon={Mail}
-                  placeholder="you@example.com"
-                  value={form.email}
-                  onChange={setField('email')}
-                  error={errors.email}
-                  required
-                  autoComplete="email"
-                />
-              ) : (
+              {contactMethod === 'phone' ? (
                 <Input
                   label="Phone number"
                   type="tel"
@@ -174,6 +162,18 @@ const SignupPage = () => {
                   error={errors.phone}
                   required
                   autoComplete="tel"
+                />
+              ) : (
+                <Input
+                  label="Email address"
+                  type="email"
+                  icon={Mail}
+                  placeholder="you@example.com"
+                  value={form.email}
+                  onChange={setField('email')}
+                  error={errors.email}
+                  required
+                  autoComplete="email"
                 />
               )}
             </div>

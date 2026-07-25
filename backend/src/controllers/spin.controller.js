@@ -95,6 +95,22 @@ const spin = async (req, res) => {
     // Recalculate spinsLeft after the transaction committed
     const todaySpinsAfter = await prisma.spinHistory.count({ where: { userId, spunAt: { gte: today } } });
 
+    // ── Notify admin in real-time ─────────────────────────────────────────
+    try {
+      const { getIO } = require('../config/socket');
+      // Fetch user info to include in notification
+      const user = await prisma.user.findUnique({
+        where: { id: userId },
+        select: { id: true, name: true, phone: true, email: true },
+      });
+      getIO().to('admin').emit('spin_prize_won', {
+        spinId:    spinRecord.id,
+        user:      user,
+        prize:     spinRecord.prize,
+        spunAt:    spinRecord.spunAt,
+      });
+    } catch { /* socket not critical */ }
+
     return success(res, {
       prize: spinRecord.prize,
       prizeIndex,
@@ -109,15 +125,76 @@ const spin = async (req, res) => {
 // ─── GET /api/spin/history (customer) ────────────────────────────────────────
 const getMyHistory = async (req, res) => {
   try {
-    const history = await prisma.spinHistory.findMany({
-      where: { userId: req.user.id },
-      orderBy: { spunAt: 'desc' },
-      take: 20,
-      include: { prize: { select: { id: true, name: true, color: true } } },
-    });
-    return success(res, { history });
+    const { page = 1, limit = 20 } = req.query;
+    const skip = (Number(page) - 1) * Number(limit);
+
+    const [history, total] = await Promise.all([
+      prisma.spinHistory.findMany({
+        where: { userId: req.user.id },
+        orderBy: { spunAt: 'desc' },
+        skip,
+        take: Number(limit),
+        include: {
+          prize: {
+            select: { id: true, name: true, description: true, color: true, imageUrl: true },
+          },
+        },
+      }),
+      prisma.spinHistory.count({ where: { userId: req.user.id } }),
+    ]);
+
+    return success(res, { history, total, page: Number(page) });
   } catch (err) {
+    console.error('[getMyHistory]', err);
     return error(res, 'Failed to fetch spin history.', 500);
+  }
+};
+
+// ─── POST /api/spin/history/:id/use (customer — mark own prize as redeemed) ──
+// Customer taps "Use Voucher" — marks it redeemed from their side
+// Admin sees it as redeemed in the spin history panel
+const useMyPrize = async (req, res) => {
+  try {
+    const spinId = Number(req.params.id);
+
+    // Make sure this record belongs to the requesting user
+    const record = await prisma.spinHistory.findFirst({
+      where: { id: spinId, userId: req.user.id },
+      include: {
+        prize: { select: { id: true, name: true, description: true, color: true, imageUrl: true } },
+      },
+    });
+
+    if (!record) return error(res, 'Reward not found.', 404);
+    if (record.redeemed) return error(res, 'This reward has already been used.', 400);
+
+    const updated = await prisma.spinHistory.update({
+      where: { id: spinId },
+      data: { redeemed: true, redeemedAt: new Date() },
+      include: {
+        prize: { select: { id: true, name: true, description: true, color: true, imageUrl: true } },
+      },
+    });
+
+    // Notify admin in real-time that a prize was self-redeemed
+    try {
+      const { getIO } = require('../config/socket');
+      const user = await prisma.user.findUnique({
+        where: { id: req.user.id },
+        select: { id: true, name: true, phone: true, email: true },
+      });
+      getIO().to('admin').emit('spin_prize_redeemed', {
+        spinId:    updated.id,
+        user,
+        prize:     updated.prize,
+        redeemedAt: updated.redeemedAt,
+      });
+    } catch { /* socket not critical */ }
+
+    return success(res, { record: updated }, 'Reward used successfully! Show this to our staff.');
+  } catch (err) {
+    console.error('[useMyPrize]', err);
+    return error(res, 'Failed to use reward.', 500);
   }
 };
 
@@ -272,6 +349,6 @@ const updateConfig = async (req, res) => {
 };
 
 module.exports = {
-  getPrizes, spin, getMyHistory, getAllHistory, markRedeemed,
+  getPrizes, spin, getMyHistory, useMyPrize, getAllHistory, markRedeemed,
   getAdminPrizes, createPrize, updatePrize, deletePrize, getSpinConfig, updateConfig,
 };

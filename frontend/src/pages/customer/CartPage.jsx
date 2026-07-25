@@ -8,6 +8,7 @@ const CartPage = () => {
   const addItem    = useCartStore((s) => s.addItem);
   const removeItem = useCartStore((s) => s.removeItem);
   const deleteItem = useCartStore((s) => s.deleteItem);
+  const setQuantity = useCartStore((s) => s.setQuantity);
   const clearCart  = useCartStore((s) => s.clearCart);
   const totalPrice = useCartStore((s) => s.totalPrice());
   const navigate   = useNavigate();
@@ -76,18 +77,24 @@ const CartPage = () => {
               >
                 <Trash2 size={15} />
               </button>
-              {/* Deals are always qty 1 — no stepper */}
-              {!item.isDeal && (
-                <div className="flex items-center gap-1 bg-gray-100 rounded-xl">
-                  <button onClick={() => removeItem(item.id)} className="p-2 rounded-l-xl hover:bg-gray-200 min-h-[36px] min-w-[36px] flex items-center justify-center text-orange-500">
-                    <Minus size={13} />
-                  </button>
-                  <span className="w-6 text-center font-bold text-sm">{item.quantity}</span>
-                  <button onClick={() => addItem(item)} className="p-2 rounded-r-xl hover:bg-gray-200 min-h-[36px] min-w-[36px] flex items-center justify-center text-orange-500">
-                    <Plus size={13} />
-                  </button>
-                </div>
-              )}
+              <div className="flex items-center gap-1 bg-gray-100 rounded-xl">
+                <button
+                  onClick={() => removeItem(item.id)}
+                  className="p-2 rounded-l-xl hover:bg-gray-200 min-h-[36px] min-w-[36px] flex items-center justify-center text-orange-500"
+                >
+                  <Minus size={13} />
+                </button>
+                <span className="w-6 text-center font-bold text-sm">{item.quantity}</span>
+                <button
+                  onClick={() => item.isDeal
+                    ? setQuantity(item.id, item.quantity + 1)
+                    : addItem(item)
+                  }
+                  className="p-2 rounded-r-xl hover:bg-gray-200 min-h-[36px] min-w-[36px] flex items-center justify-center text-orange-500"
+                >
+                  <Plus size={13} />
+                </button>
+              </div>
             </div>
           </div>
         ))}

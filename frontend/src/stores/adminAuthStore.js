@@ -22,8 +22,34 @@ const migrateOldAdminSession = () => {
 migrateOldAdminSession();
 
 const useAdminAuthStore = create((set, get) => ({
-  user: JSON.parse(localStorage.getItem('zouq_admin_user') || 'null'),
-  token: localStorage.getItem('zouq_admin_token') || null,
+  user: (() => {
+    try {
+      const parsed = JSON.parse(localStorage.getItem('zouq_admin_user') || 'null');
+      // Boot-time guard: clear admin store if it somehow holds a non-ADMIN user
+      if (parsed && parsed.role !== 'ADMIN') {
+        localStorage.removeItem('zouq_admin_user');
+        localStorage.removeItem('zouq_admin_token');
+        return null;
+      }
+      return parsed;
+    } catch {
+      return null;
+    }
+  })(),
+  token: (() => {
+    // Only keep the token if there's a valid admin user backing it
+    const user = localStorage.getItem('zouq_admin_user');
+    try {
+      const parsed = JSON.parse(user || 'null');
+      if (!parsed || parsed.role !== 'ADMIN') {
+        localStorage.removeItem('zouq_admin_token');
+        return null;
+      }
+    } catch {
+      return null;
+    }
+    return localStorage.getItem('zouq_admin_token') || null;
+  })(),
   isLoading: false,
   error: null,
 
@@ -56,6 +82,14 @@ const useAdminAuthStore = create((set, get) => ({
     try {
       const { data } = await api.get('/auth/me');
       const user = data.data.user;
+
+      // Hard guard — if the token somehow belongs to a non-ADMIN, clear the
+      // admin session immediately rather than silently storing wrong data.
+      if (user.role !== 'ADMIN') {
+        get().logout();
+        return;
+      }
+
       localStorage.setItem('zouq_admin_user', JSON.stringify(user));
       set({ user });
     } catch {

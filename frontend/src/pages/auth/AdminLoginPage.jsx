@@ -1,13 +1,13 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Mail, Lock, Eye, EyeOff } from 'lucide-react';
+import { User, Lock, Eye, EyeOff } from 'lucide-react';
 import toast from 'react-hot-toast';
 import useAdminAuthStore from '../../stores/adminAuthStore';
 import Button from '../../components/ui/Button';
 
 const AdminLoginPage = () => {
   const [showPassword, setShowPassword] = useState(false);
-  const [form, setForm] = useState({ email: '', password: '' });
+  const [form, setForm] = useState({ username: '', password: '' });
   const [errors, setErrors] = useState({});
 
   const { login, isLoading } = useAdminAuthStore();
@@ -15,7 +15,7 @@ const AdminLoginPage = () => {
 
   const validate = () => {
     const e = {};
-    if (!form.email) e.email = 'Email is required.';
+    if (!form.username.trim()) e.username = 'Username is required.';
     if (!form.password) e.password = 'Password is required.';
     setErrors(e);
     return Object.keys(e).length === 0;
@@ -46,21 +46,21 @@ const AdminLoginPage = () => {
             <p className="text-gray-400 text-sm mt-1">Zouq Cafe Management</p>
           </div>
 
-          <form onSubmit={handleSubmit} noValidate className="space-y-4">
+          <form onSubmit={handleSubmit} noValidate autoComplete="off" className="space-y-4">
             <div className="flex flex-col gap-1.5">
-              <label className="text-sm font-medium text-gray-300">Email</label>
+              <label className="text-sm font-medium text-gray-300">Username</label>
               <div className="relative">
-                <Mail size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" />
+                <User size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" />
                 <input
-                  type="email"
-                  placeholder="admin@zouqcafe.com"
-                  value={form.email}
-                  onChange={(e) => setForm({ ...form, email: e.target.value })}
-                  autoComplete="email"
-                  className={`w-full bg-gray-700 border rounded-xl pl-9 pr-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-orange-400 focus:border-transparent transition-all min-h-[44px] ${errors.email ? 'border-red-500' : 'border-gray-600'}`}
+                  type="text"
+                  placeholder="Enter your username"
+                  value={form.username}
+                  onChange={(e) => setForm({ ...form, username: e.target.value })}
+                  autoComplete="off"
+                  className={`w-full bg-gray-700 border rounded-xl pl-9 pr-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-orange-400 focus:border-transparent transition-all min-h-[44px] ${errors.username ? 'border-red-500' : 'border-gray-600'}`}
                 />
               </div>
-              {errors.email && <p className="text-xs text-red-400">⚠ {errors.email}</p>}
+              {errors.username && <p className="text-xs text-red-400">⚠ {errors.username}</p>}
             </div>
 
             <div className="flex flex-col gap-1.5">
@@ -72,7 +72,7 @@ const AdminLoginPage = () => {
                   placeholder="••••••••"
                   value={form.password}
                   onChange={(e) => setForm({ ...form, password: e.target.value })}
-                  autoComplete="current-password"
+                  autoComplete="new-password"
                   className={`w-full bg-gray-700 border rounded-xl pl-9 pr-11 py-3 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-orange-400 focus:border-transparent transition-all min-h-[44px] ${errors.password ? 'border-red-500' : 'border-gray-600'}`}
                 />
                 <button

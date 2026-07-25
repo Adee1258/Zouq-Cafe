@@ -6,12 +6,19 @@ const api = axios.create({
   timeout: 20000,
 });
 
-// Attach correct JWT token based on current page context
+// Attach correct JWT token based on current page context.
+// We use a strict check: only routes that are INSIDE the admin panel
+// (i.e. not /admin/login itself) should use the admin token.
+// This prevents the login page from accidentally sending a stale token.
 api.interceptors.request.use((config) => {
-  const isAdminPage =
-    window.location.pathname.startsWith('/admin');
+  const path = window.location.pathname;
 
-  const tokenKey = isAdminPage ? 'zouq_admin_token' : 'zouq_customer_token';
+  // /admin/login is an AUTH page — never attach any existing token here.
+  // All other /admin/* paths are inside the protected panel — use admin token.
+  const isInsideAdminPanel =
+    path.startsWith('/admin') && path !== '/admin/login';
+
+  const tokenKey = isInsideAdminPanel ? 'zouq_admin_token' : 'zouq_customer_token';
   const token = localStorage.getItem(tokenKey);
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
@@ -30,14 +37,15 @@ api.interceptors.response.use(
 
     // 401 = session expired — log out the correct store and redirect
     if (err.response?.status === 401) {
-      const isAdminPage = window.location.pathname.startsWith('/admin');
+      const path = window.location.pathname;
+      const isInsideAdminPanel = path.startsWith('/admin') && path !== '/admin/login';
       const isAuthPage =
-        window.location.pathname === '/login' ||
-        window.location.pathname === '/signup' ||
-        window.location.pathname === '/admin/login';
+        path === '/login' ||
+        path === '/signup' ||
+        path === '/admin/login';
 
       if (!isAuthPage) {
-        if (isAdminPage) {
+        if (isInsideAdminPanel) {
           import('../stores/adminAuthStore').then(({ default: useAdminAuthStore }) => {
             useAdminAuthStore.getState().logout();
           });

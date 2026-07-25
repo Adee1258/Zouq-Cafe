@@ -46,10 +46,13 @@ const OrderDetail = ({ orderId }) => {
       if (Number(id) === Number(orderId)) {
         setOrder((prev) => {
           if (!prev) return prev;
-          const label = orderStatusLabel(status);
-          toast(`📦 Order status updated: ${label}`, { id: 'order-status', duration: 5000 });
           return { ...prev, status };
         });
+        // Toast outside of setState to avoid setState-during-render warning
+        const label = orderStatusLabel(status);
+        setTimeout(() => {
+          toast(`📦 Order status updated: ${label}`, { id: 'order-status', duration: 5000 });
+        }, 0);
       }
     };
 
@@ -157,11 +160,14 @@ const OrderDetail = ({ orderId }) => {
         </div>
       )}
 
-      {/* Rejected notice */}
+      {/* Rejected / Cancelled notice */}
       {order.status === 'REJECTED' && (
         <div className="bg-red-50 border border-red-200 rounded-2xl p-4 mb-4">
           <p className="text-red-700 font-medium text-sm flex items-center gap-2">
-            <XCircle size={16} /> This order was rejected. Please contact us for more info.
+            <XCircle size={16} />
+            {/* If the customer cancelled it themselves it was PENDING → REJECTED.
+                If admin rejected it, it could have been any earlier status. */}
+            This order was cancelled or rejected. Please contact us if you have questions.
           </p>
         </div>
       )}
@@ -171,7 +177,6 @@ const OrderDetail = ({ orderId }) => {
         <h2 className="font-bold text-gray-900 text-sm mb-2">Delivery Address</h2>
         <p className="text-gray-600 text-sm">{order.address}</p>
         {order.notes && (() => {
-          // Show only the user's personal note, not the deal summary part
           const userNote = order.notes.split(' | ').find((n) => !n.startsWith('[Deal:'));
           return userNote ? (
             <p className="text-gray-400 text-xs mt-2 italic">Note: {userNote}</p>
@@ -182,66 +187,125 @@ const OrderDetail = ({ orderId }) => {
       {/* Items */}
       <div className="bg-white rounded-2xl p-5 shadow-sm mb-4">
         <h2 className="font-bold text-gray-900 text-sm mb-3">Items Ordered</h2>
-        <div className="space-y-3">
-          {order.items.map((item) => (
-            <div key={item.id} className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-lg overflow-hidden bg-orange-50 flex-shrink-0">
-                {item.product?.imageUrl ? (
-                  <img src={item.product.imageUrl} alt={item.product.name} className="w-full h-full object-cover" />
-                ) : (
-                  <div className="w-full h-full flex items-center justify-center text-lg">🍽️</div>
-                )}
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-gray-900 truncate">{item.product?.name}</p>
-                <p className="text-xs text-gray-400">
-                  Rs. {Number(item.priceAtOrder).toLocaleString()} × {item.quantity}
-                </p>
-              </div>
-              <p className="text-sm font-semibold text-gray-900 flex-shrink-0">
-                Rs. {(Number(item.priceAtOrder) * item.quantity).toLocaleString()}
-              </p>
-            </div>
-          ))}
-        </div>
 
-        {/* Deal summary — parsed from notes field */}
-        {order.notes && order.notes.includes('[Deal:') && (() => {
-          // Extract deal lines from notes (format: "[Deal: Title] item1 ×1, item2 ×2")
-          const dealLines = order.notes.split(' | ').filter((n) => n.startsWith('[Deal:'));
-          const userNote  = order.notes.split(' | ').find((n) => !n.startsWith('[Deal:'));
+        {(() => {
+          const items = order.items || [];
+          const regularItems  = items.filter((i) => !i.dealId);
+          const dealGroups    = {};
+          items.filter((i) => i.dealId).forEach((i) => {
+            const key = i.dealCartKey || String(i.dealId);
+            if (!dealGroups[key]) {
+              dealGroups[key] = { dealId: i.dealId, dealTitle: i.dealTitle, items: [] };
+            }
+            dealGroups[key].items.push(i);
+          });
+          const dealGroupList = Object.values(dealGroups);
+
           return (
-            <>
-              {dealLines.map((line, idx) => {
-                const match = line.match(/^\[Deal: (.+?)\] (.+)$/);
-                if (!match) return null;
-                const [, dealTitle, itemsStr] = match;
-                const dealItemsList = itemsStr.split(', ');
+            <div className="space-y-3">
+              {/* ── Regular food items ── */}
+              {regularItems.map((item) => (
+                <div key={item.id} className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-lg overflow-hidden bg-orange-50 flex-shrink-0">
+                    {item.product?.imageUrl ? (
+                      <img src={item.product.imageUrl} alt={item.product.name} className="w-full h-full object-cover" />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center text-lg">🍽️</div>
+                    )}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-gray-900 truncate">
+                      {item.product?.name || item.customName || 'Item'}
+                    </p>
+                    <p className="text-xs text-gray-400">
+                      Rs. {Number(item.priceAtOrder).toLocaleString()} × {item.quantity}
+                    </p>
+                  </div>
+                  <p className="text-sm font-semibold text-gray-900 flex-shrink-0">
+                    Rs. {(Number(item.priceAtOrder) * item.quantity).toLocaleString()}
+                  </p>
+                </div>
+              ))}
+
+              {/* ── Deal groups ── */}
+              {dealGroupList.map((group, gIdx) => {
+                const dealTotal = group.items.reduce(
+                  (s, i) => s + Number(i.priceAtOrder) * i.quantity, 0
+                );
                 return (
-                  <div key={idx} className="mt-3 pt-3 border-t border-dashed border-orange-200 bg-orange-50 rounded-xl p-3">
-                    <p className="text-xs font-bold text-orange-600 mb-1.5">🎁 {dealTitle}</p>
-                    <div className="space-y-0.5">
-                      {dealItemsList.map((it, i) => (
-                        <p key={i} className="text-xs text-gray-600 flex items-center gap-1">
-                          <span className="text-orange-400">•</span> {it}
-                        </p>
+                  <div
+                    key={group.dealId + '_' + gIdx}
+                    className="bg-orange-50 border border-orange-100 rounded-xl p-3"
+                  >
+                    {/* Deal header */}
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="flex items-center gap-2">
+                        <span className="text-lg">🎁</span>
+                        <div>
+                          <p className="text-sm font-bold text-orange-600">{group.dealTitle}</p>
+                          <p className="text-[11px] text-orange-400">Deal</p>
+                        </div>
+                      </div>
+                      <p className="text-sm font-bold text-gray-900">
+                        Rs. {dealTotal.toLocaleString()}
+                      </p>
+                    </div>
+                    {/* Deal contents */}
+                    <div className="space-y-1.5 pl-1 border-l-2 border-orange-200 ml-1">
+                      {group.items.map((item) => (
+                        <div key={item.id} className="flex items-center gap-2">
+                          <div className="w-6 h-6 rounded-md overflow-hidden bg-white flex-shrink-0">
+                            {item.product?.imageUrl ? (
+                              <img src={item.product.imageUrl} alt="" className="w-full h-full object-cover" />
+                            ) : (
+                              <div className="w-full h-full flex items-center justify-center text-[10px]">🍽️</div>
+                            )}
+                          </div>
+                          <p className="text-xs text-gray-700 flex-1 truncate">
+                            {item.product?.name || item.customName || 'Item'}
+                          </p>
+                          <p className="text-xs text-gray-500 flex-shrink-0">× {item.quantity}</p>
+                        </div>
                       ))}
                     </div>
                   </div>
                 );
               })}
-              {userNote && (
-                <p className="text-gray-400 text-xs mt-2 italic">Note: {userNote}</p>
-              )}
-            </>
+            </div>
           );
         })()}
 
-        <div className="border-t border-gray-100 mt-4 pt-4 flex justify-between">
-          <span className="font-bold text-gray-900">Total</span>
-          <span className="font-extrabold text-orange-600">
-            Rs. {Number(order.totalAmount).toLocaleString()}
-          </span>
+        <div className="border-t border-gray-100 mt-4 pt-4 space-y-2">
+          {Number(order.discountAmount) > 0 && (
+            <>
+              <div className="flex justify-between text-sm text-gray-500">
+                <span>Subtotal</span>
+                <span>Rs. {(Number(order.totalAmount) + Number(order.discountAmount)).toLocaleString()}</span>
+              </div>
+              {/* Promo code discount — only shown when a promo was applied */}
+              {order.promoCode && (
+                <div className="flex justify-between text-sm text-green-600 font-semibold">
+                  <span className="flex items-center gap-1">🏷️ Promo ({order.promoCode})</span>
+                  {/* discountAmount includes both promo + points. Show full discount
+                      here since we can't split them post-hoc without extra fields. */}
+                  <span>− Rs. {Number(order.discountAmount).toLocaleString()}</span>
+                </div>
+              )}
+              {/* Points redemption — shown when no promo code but discount exists */}
+              {!order.promoCode && Number(order.discountAmount) > 0 && (
+                <div className="flex justify-between text-sm text-amber-600 font-semibold">
+                  <span className="flex items-center gap-1">⭐ Points Redeemed</span>
+                  <span>− Rs. {Number(order.discountAmount).toLocaleString()}</span>
+                </div>
+              )}
+            </>
+          )}
+          <div className="flex justify-between font-bold text-gray-900 pt-1 border-t border-gray-100">
+            <span className="font-bold text-gray-900">Total</span>
+            <span className="font-extrabold text-orange-600">
+              Rs. {Number(order.totalAmount).toLocaleString()}
+            </span>
+          </div>
         </div>
       </div>
 
@@ -317,7 +381,21 @@ const OrdersList = () => {
 
               <div className="flex items-center justify-between">
                 <p className="text-sm text-gray-500 truncate max-w-[70%]">
-                  {order.items.map((i) => i.product?.name).join(', ')}
+                  {(() => {
+                    const seen = new Set();
+                    return order.items
+                      .map((i) => {
+                        if (i.dealId) {
+                          // Show deal title once per deal group
+                          if (seen.has(i.dealCartKey || i.dealId)) return null;
+                          seen.add(i.dealCartKey || i.dealId);
+                          return `🎁 ${i.dealTitle}`;
+                        }
+                        return i.product?.name || i.customName;
+                      })
+                      .filter(Boolean)
+                      .join(', ');
+                  })()}
                 </p>
                 <div className="flex items-center gap-2">
                   <span className="font-bold text-orange-600 text-sm">

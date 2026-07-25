@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import {
   ShoppingBag, DollarSign, Clock, CheckCircle,
-  TrendingUp, Package, ArrowRight, RefreshCw,
+  TrendingUp, Package, ArrowRight, RefreshCw, Trash2,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import api from '../../lib/api';
@@ -220,8 +220,25 @@ const DashboardPage = () => {
                         onUpdated={(updated) => setRecentOrders((prev) => prev.map((o) => o.id === updated.id ? { ...o, status: updated.status } : o))}
                       />
                     </td>
-                    <td className="px-5 py-3.5">
-                      <span className="text-orange-500 font-semibold text-xs">View →</span>
+                    <td className="px-5 py-3.5" onClick={(e) => e.stopPropagation()}>
+                      <button
+                        onClick={async (e) => {
+                          e.stopPropagation();
+                          if (!window.confirm(`Order #${order.id} permanently delete ho jayega. Confirm?`)) return;
+                          try {
+                            await api.delete(`/orders/admin/${order.id}`);
+                            toast.success(`Order #${order.id} delete ho gaya.`);
+                            setRecentOrders((prev) => prev.filter((o) => o.id !== order.id));
+                          } catch (err) {
+                            toast.error(err.message || 'Delete failed.');
+                          }
+                        }}
+                        style={{ minHeight: 'unset', minWidth: 'unset' }}
+                        className="w-8 h-8 rounded-lg bg-red-50 hover:bg-red-100 flex items-center justify-center transition-colors"
+                        title="Delete order"
+                      >
+                        <Trash2 size={14} className="text-red-500" />
+                      </button>
                     </td>
                   </tr>
                 ))}
@@ -237,6 +254,7 @@ const DashboardPage = () => {
           orderId={selectedOrderId}
           onClose={() => setSelectedOrderId(null)}
           onUpdated={(updated) => setRecentOrders((prev) => prev.map((o) => o.id === updated.id ? { ...o, status: updated.status } : o))}
+          onDeleted={(deletedId) => setRecentOrders((prev) => prev.filter((o) => o.id !== deletedId))}
         />
       )}
     </div>

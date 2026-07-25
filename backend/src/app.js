@@ -18,12 +18,13 @@ const allowedOrigins = [
   process.env.CLIENT_URL_2,
   'http://localhost:5173',
   'http://127.0.0.1:5173',
+  'https://zouq-cafe-adts.vercel.app',
+  'https://zouq-cafe.vercel.app',
 ].filter(Boolean);
 
 app.use(cors({
   origin: (origin, callback) => {
     if (!origin) return callback(null, true);
-    // Allow any vercel.app subdomain for this project
     if (
       allowedOrigins.includes(origin) ||
       origin.endsWith('.vercel.app')
@@ -31,7 +32,12 @@ app.use(cors({
     return callback(new Error(`CORS policy: origin ${origin} not allowed`));
   },
   credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
 }));
+
+// Handle preflight OPTIONS requests
+app.options('*', cors());
 
 // ─── Rate Limiters ────────────────────────────────────────────────────────────
 const isProd = process.env.NODE_ENV === 'production';

@@ -1,0 +1,458 @@
+import { useState, useEffect } from 'react';
+import {
+  User, MapPin, Phone, Mail, LogOut, Lock,
+  Eye, EyeOff, ChevronRight, ShieldCheck, Package, Heart, ShoppingCart, Flame,
+} from 'lucide-react';
+import { Link, useNavigate } from 'react-router-dom';
+import toast from 'react-hot-toast';
+import useAuthStore from '../../stores/authStore';
+import useFavoritesStore from '../../stores/favoritesStore';
+import useCartStore from '../../stores/cartStore';
+import api from '../../lib/api';
+import Button from '../../components/ui/Button';
+import Input from '../../components/ui/Input';
+
+// ── Tabs ──────────────────────────────────────────────────────────────────────
+const TABS = [
+  { id: 'profile',   label: 'Profile',   icon: User },
+  { id: 'favorites', label: 'Favorites', icon: Heart },
+  { id: 'security',  label: 'Security',  icon: ShieldCheck },
+];
+
+// ── Profile Tab ───────────────────────────────────────────────────────────────
+const ProfileTab = ({ user, fetchMe }) => {
+  const [editing, setEditing] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [form, setForm] = useState({ name: '', phone: '', address: '' });
+
+  useEffect(() => {
+    if (user) {
+      setForm({
+        name: user.name || '',
+        phone: user.phone || '',
+        address: user.address || '',
+      });
+    }
+  }, [user]);
+
+  const handleSave = async (e) => {
+    e.preventDefault();
+    if (!form.name.trim()) {
+      toast.error('Name is required.');
+      return;
+    }
+    if (form.name.trim().length < 2) {
+      toast.error('Name must be at least 2 characters.');
+      return;
+    }
+    setLoading(true);
+    try {
+      await api.patch('/auth/me', {
+        name: form.name.trim(),
+        phone: form.phone.trim() || null,
+        address: form.address.trim() || null,
+      });
+      await fetchMe();
+      toast.success('Profile updated ✅');
+      setEditing(false);
+    } catch (err) {
+      toast.error(err.message || 'Failed to update profile.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleCancel = () => {
+    setForm({
+      name: user?.name || '',
+      phone: user?.phone || '',
+      address: user?.address || '',
+    });
+    setEditing(false);
+  };
+
+  return (
+    <div className="space-y-4">
+      {/* Avatar + name card */}
+      <div className="bg-white rounded-2xl shadow-sm p-6">
+        <div className="flex items-center gap-4 mb-6">
+          <div className="w-16 h-16 rounded-full bg-gradient-to-br from-orange-400 to-amber-400 flex items-center justify-center text-white text-2xl font-extrabold flex-shrink-0 shadow-md select-none">
+            {user.name?.[0]?.toUpperCase() || '?'}
+          </div>
+          <div>
+            <h2 className="text-xl font-bold text-gray-900">{user.name}</h2>
+            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-orange-100 text-orange-600 mt-1">
+              {user.role === 'ADMIN' ? '👑 Admin' : '🛒 Customer'}
+            </span>
+          </div>
+        </div>
+
+        {editing ? (
+          <form onSubmit={handleSave} className="space-y-4">
+            <Input
+              label="Full name"
+              icon={User}
+              value={form.name}
+              onChange={(e) => setForm({ ...form, name: e.target.value })}
+              required
+              placeholder="Your full name"
+              autoComplete="name"
+            />
+            <Input
+              label="Phone number"
+              icon={Phone}
+              type="tel"
+              value={form.phone}
+              onChange={(e) => setForm({ ...form, phone: e.target.value })}
+              placeholder="03001234567"
+              autoComplete="tel"
+            />
+            <Input
+              label="Delivery address"
+              icon={MapPin}
+              value={form.address}
+              onChange={(e) => setForm({ ...form, address: e.target.value })}
+              placeholder="House #, Street, City"
+              autoComplete="street-address"
+            />
+            <p className="text-xs text-gray-400">
+              * Email address cannot be changed after signup.
+            </p>
+            <div className="flex gap-3 pt-2">
+              <Button type="submit" variant="primary" isLoading={loading} className="flex-1">
+                Save Changes
+              </Button>
+              <Button type="button" variant="ghost" onClick={handleCancel} className="flex-1">
+                Cancel
+              </Button>
+            </div>
+          </form>
+        ) : (
+          <div className="space-y-1">
+            {[
+              { icon: User,   label: 'Name',    value: user.name },
+              { icon: Mail,   label: 'Email',   value: user.email },
+              { icon: Phone,  label: 'Phone',   value: user.phone },
+              { icon: MapPin, label: 'Address', value: user.address },
+            ].map(({ icon: Icon, label, value }) => (
+              <div key={label} className="flex items-start gap-3 py-3 border-b border-gray-100 last:border-0">
+                <Icon size={16} className="text-orange-400 mt-0.5 flex-shrink-0" />
+                <div className="min-w-0 flex-1">
+                  <p className="text-xs text-gray-400 mb-0.5">{label}</p>
+                  <p className="text-sm text-gray-700 break-words">
+                    {value || <span className="text-gray-300 italic">Not set</span>}
+                  </p>
+                </div>
+              </div>
+            ))}
+            <div className="pt-4">
+              <Button variant="outline" fullWidth onClick={() => setEditing(true)}>
+                Edit Profile
+              </Button>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Quick links */}
+      <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
+        <Link
+          to="/orders"
+          className="flex items-center justify-between px-5 py-4 hover:bg-orange-50 transition-colors"
+        >
+          <div className="flex items-center gap-3">
+            <Package size={18} className="text-orange-400" />
+            <span className="text-sm font-medium text-gray-700">My Orders</span>
+          </div>
+          <ChevronRight size={16} className="text-gray-400" />
+        </Link>
+      </div>
+    </div>
+  );
+};
+
+// ── Favorites Tab ─────────────────────────────────────────────────────────────
+const FavoritesTab = () => {
+  const favorites      = useFavoritesStore((s) => s.favorites);
+  const toggleFavorite = useFavoritesStore((s) => s.toggleFavorite);
+  const addItem        = useCartStore((s) => s.addItem);
+
+  if (favorites.length === 0) {
+    return (
+      <div className="bg-white rounded-2xl shadow-sm p-10 text-center">
+        <Heart size={40} className="text-gray-200 mx-auto mb-3" />
+        <p className="font-semibold text-gray-600">No favorites yet</p>
+        <p className="text-xs text-gray-400 mt-1 mb-4">Tap the ❤ icon on any food or deal to save it here.</p>
+        <Link to="/menu" className="inline-flex items-center gap-1.5 bg-orange-500 text-white text-sm font-bold px-4 py-2.5 rounded-xl hover:bg-orange-600 transition-colors">
+          Browse Menu
+        </Link>
+      </div>
+    );
+  }
+
+  const products = favorites.filter((f) => f.type === 'product');
+  const deals    = favorites.filter((f) => f.type === 'deal');
+
+  return (
+    <div className="space-y-4">
+      {products.length > 0 && (
+        <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
+          <div className="px-4 pt-4 pb-2 flex items-center gap-2">
+            <ShoppingCart size={14} className="text-orange-400" />
+            <p className="text-xs font-bold text-gray-500 uppercase tracking-wide">Food Items ({products.length})</p>
+          </div>
+          {products.map((item) => (
+            <div key={item.id} className="flex items-center gap-3 px-4 py-3 border-t border-gray-50">
+              <div className="w-12 h-12 rounded-xl overflow-hidden bg-orange-50 flex-shrink-0">
+                {item.imageUrl
+                  ? <img src={item.imageUrl} alt={item.name} className="w-full h-full object-cover" />
+                  : <div className="w-full h-full flex items-center justify-center text-xl">🍽️</div>}
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-semibold text-gray-900 truncate">{item.name}</p>
+                <p className="text-xs text-orange-500 font-bold">Rs. {Number(item.price).toLocaleString()}</p>
+              </div>
+              <button
+                onClick={() => { addItem({ id: item.id, name: item.name, price: item.price, imageUrl: item.imageUrl }); toast.success('Added to cart!'); }}
+                style={{ minHeight: 'unset', minWidth: 'unset' }}
+                className="bg-orange-500 text-white text-xs font-bold px-3 py-1.5 rounded-lg hover:bg-orange-600 transition-colors"
+              >
+                Add
+              </button>
+              <button
+                onClick={() => toggleFavorite(item)}
+                style={{ minHeight: 'unset', minWidth: 'unset' }}
+                className="p-1.5 text-red-400 hover:text-red-500 transition-colors"
+                aria-label="Remove from favorites"
+              >
+                <Heart size={16} className="fill-red-400" />
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {deals.length > 0 && (
+        <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
+          <div className="px-4 pt-4 pb-2 flex items-center gap-2">
+            <Flame size={14} className="text-red-400" />
+            <p className="text-xs font-bold text-gray-500 uppercase tracking-wide">Hot Deals ({deals.length})</p>
+          </div>
+          {deals.map((item) => (
+            <div key={item.id} className="flex items-center gap-3 px-4 py-3 border-t border-gray-50">
+              <div className="w-12 h-12 rounded-xl overflow-hidden bg-orange-50 flex-shrink-0">
+                {item.imageUrl
+                  ? <img src={item.imageUrl} alt={item.name} className="w-full h-full object-cover" />
+                  : <div className="w-full h-full flex items-center justify-center text-xl">🔥</div>}
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-semibold text-gray-900 truncate">{item.name}</p>
+                <p className="text-xs text-orange-500 font-bold">Rs. {Number(item.dealPrice).toLocaleString()}</p>
+              </div>
+              <Link
+                to="/deals"
+                style={{ minHeight: 'unset', minWidth: 'unset' }}
+                className="bg-orange-500 text-white text-xs font-bold px-3 py-1.5 rounded-lg hover:bg-orange-600 transition-colors"
+              >
+                View
+              </Link>
+              <button
+                onClick={() => toggleFavorite(item)}
+                style={{ minHeight: 'unset', minWidth: 'unset' }}
+                className="p-1.5 text-red-400 hover:text-red-500 transition-colors"
+                aria-label="Remove from favorites"
+              >
+                <Heart size={16} className="fill-red-400" />
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+};
+const SecurityTab = () => {
+  const [loading, setLoading] = useState(false);
+  const [showCurrent, setShowCurrent] = useState(false);
+  const [showNew, setShowNew] = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
+  const [form, setForm] = useState({
+    currentPassword: '',
+    newPassword: '',
+    confirmPassword: '',
+  });
+  const [errors, setErrors] = useState({});
+
+  const validate = () => {
+    const e = {};
+    if (!form.currentPassword) e.currentPassword = 'Current password is required.';
+    if (!form.newPassword) {
+      e.newPassword = 'New password is required.';
+    } else if (form.newPassword.length < 6) {
+      e.newPassword = 'Password must be at least 6 characters.';
+    }
+    if (!form.confirmPassword) {
+      e.confirmPassword = 'Please confirm your new password.';
+    } else if (form.newPassword !== form.confirmPassword) {
+      e.confirmPassword = 'Passwords do not match.';
+    }
+    setErrors(e);
+    return Object.keys(e).length === 0;
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (!validate()) return;
+    setLoading(true);
+    try {
+      await api.patch('/auth/me/password', {
+        currentPassword: form.currentPassword,
+        newPassword: form.newPassword,
+      });
+      toast.success('Password changed successfully 🔒');
+      setForm({ currentPassword: '', newPassword: '', confirmPassword: '' });
+      setErrors({});
+    } catch (err) {
+      const msg = err.message || 'Failed to change password.';
+      if (msg.toLowerCase().includes('current') || msg.toLowerCase().includes('incorrect')) {
+        setErrors((prev) => ({ ...prev, currentPassword: msg }));
+      } else {
+        toast.error(msg);
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const PasswordField = ({ label, field, show, onToggle, placeholder, autoComplete }) => (
+    <div className="flex flex-col gap-1.5">
+      <label className="text-sm font-medium text-gray-700">
+        {label} <span className="text-red-500">*</span>
+      </label>
+      <div className="relative">
+        <Lock size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+        <input
+          type={show ? 'text' : 'password'}
+          placeholder={placeholder}
+          value={form[field]}
+          onChange={(e) => {
+            setForm((prev) => ({ ...prev, [field]: e.target.value }));
+            if (errors[field]) setErrors((prev) => ({ ...prev, [field]: '' }));
+          }}
+          autoComplete={autoComplete}
+          className={`w-full rounded-xl border bg-white pl-10 pr-11 py-3 text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-orange-400 focus:border-transparent transition-all min-h-[44px] ${errors[field] ? 'border-red-400' : 'border-gray-200'}`}
+        />
+        <button
+          type="button"
+          onClick={onToggle}
+          className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 min-h-[44px] min-w-[44px] flex items-center justify-center"
+          aria-label={show ? 'Hide password' : 'Show password'}
+        >
+          {show ? <EyeOff size={18} /> : <Eye size={18} />}
+        </button>
+      </div>
+      {errors[field] && <p className="text-xs text-red-500">⚠ {errors[field]}</p>}
+    </div>
+  );
+
+  return (
+    <div className="bg-white rounded-2xl shadow-sm p-6">
+      <div className="flex items-center gap-3 mb-6">
+        <div className="w-10 h-10 rounded-full bg-orange-100 flex items-center justify-center">
+          <Lock size={18} className="text-orange-500" />
+        </div>
+        <div>
+          <h3 className="font-semibold text-gray-900">Change Password</h3>
+          <p className="text-xs text-gray-400">Keep your account secure</p>
+        </div>
+      </div>
+
+      <form onSubmit={handleSubmit} className="space-y-4" noValidate>
+        <PasswordField
+          label="Current password"
+          field="currentPassword"
+          show={showCurrent}
+          onToggle={() => setShowCurrent(!showCurrent)}
+          placeholder="Your current password"
+          autoComplete="current-password"
+        />
+        <PasswordField
+          label="New password"
+          field="newPassword"
+          show={showNew}
+          onToggle={() => setShowNew(!showNew)}
+          placeholder="Min. 6 characters"
+          autoComplete="new-password"
+        />
+        <PasswordField
+          label="Confirm new password"
+          field="confirmPassword"
+          show={showConfirm}
+          onToggle={() => setShowConfirm(!showConfirm)}
+          placeholder="Repeat new password"
+          autoComplete="new-password"
+        />
+        <Button type="submit" variant="primary" fullWidth isLoading={loading} className="mt-2">
+          Update Password
+        </Button>
+      </form>
+    </div>
+  );
+};
+
+// ── Main ProfilePage ──────────────────────────────────────────────────────────
+const ProfilePage = () => {
+  const { user, fetchMe, logout } = useAuthStore();
+  const [activeTab, setActiveTab] = useState('profile');
+  const navigate = useNavigate();
+
+  const handleLogout = () => {
+    logout();
+    navigate('/', { replace: true });
+  };
+
+  if (!user) return null;
+
+  return (
+    <div className="max-w-lg mx-auto px-4 py-8 pb-24 md:pb-8 space-y-4">
+      {/* Page title */}
+      <div className="mb-2">
+        <h1 className="text-2xl font-bold text-gray-900">My Account</h1>
+        <p className="text-sm text-gray-500 mt-0.5">Manage your profile and settings</p>
+      </div>
+
+      {/* Tabs */}
+      <div className="flex bg-gray-100 rounded-xl p-1">
+        {TABS.map(({ id, label, icon: Icon }) => (
+          <button
+            key={id}
+            onClick={() => setActiveTab(id)}
+            className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg text-sm font-medium transition-all ${
+              activeTab === id
+                ? 'bg-white text-orange-600 shadow-sm'
+                : 'text-gray-500 hover:text-gray-700'
+            }`}
+          >
+            <Icon size={15} />
+            {label}
+          </button>
+        ))}
+      </div>
+
+      {/* Tab content */}
+      {activeTab === 'profile'   && <ProfileTab user={user} fetchMe={fetchMe} />}
+      {activeTab === 'favorites' && <FavoritesTab />}
+      {activeTab === 'security'  && <SecurityTab />}
+
+      {/* Logout */}
+      <button
+        onClick={handleLogout}
+        className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-white rounded-2xl shadow-sm text-red-500 hover:bg-red-50 font-semibold text-sm transition-colors min-h-[44px]"
+      >
+        <LogOut size={16} /> Logout
+      </button>
+    </div>
+  );
+};
+
+export default ProfilePage;

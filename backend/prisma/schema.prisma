@@ -1,0 +1,188 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+}
+
+enum Role {
+  CUSTOMER
+  ADMIN
+}
+
+enum OrderStatus {
+  PENDING
+  APPROVED
+  PREPARING
+  OUT_FOR_DELIVERY
+  DELIVERED
+  REJECTED
+}
+
+enum PaymentType {
+  COD
+  ONLINE
+}
+
+enum PaymentStatus {
+  PENDING
+  COMPLETED
+  FAILED
+}
+
+model User {
+  id           Int           @id @default(autoincrement())
+  name         String
+  phone        String?       @unique
+  email        String?       @unique
+  passwordHash String        @map("password_hash")
+  address      String?
+  role         Role          @default(CUSTOMER)
+  createdAt    DateTime      @default(now()) @map("created_at")
+  orders       Order[]
+  spinHistory  SpinHistory[]
+
+  @@map("users")
+}
+
+model Category {
+  id        Int       @id @default(autoincrement())
+  name      String    @unique
+  imageUrl  String?   @map("image_url")
+  sortOrder Int       @default(0) @map("sort_order")
+  products  Product[]
+
+  @@map("categories")
+}
+
+model Product {
+  id          Int         @id @default(autoincrement())
+  categoryId  Int         @map("category_id")
+  name        String
+  description String?
+  price       Decimal     @db.Decimal(10, 2)
+  imageUrl    String?     @map("image_url")
+  isAvailable Boolean     @default(true) @map("is_available")
+  createdAt   DateTime    @default(now()) @map("created_at")
+  category    Category    @relation(fields: [categoryId], references: [id])
+  orderItems  OrderItem[]
+  dealItems   DealItem[]
+
+  @@index([categoryId])
+  @@index([isAvailable])
+  @@map("products")
+}
+
+model Order {
+  id          Int         @id @default(autoincrement())
+  userId      Int         @map("user_id")
+  totalAmount Decimal     @db.Decimal(10, 2) @map("total_amount")
+  paymentType PaymentType @map("payment_type")
+  status      OrderStatus @default(PENDING)
+  address     String
+  notes       String?
+  createdAt   DateTime    @default(now()) @map("created_at")
+  updatedAt   DateTime    @updatedAt @map("updated_at")
+  user        User        @relation(fields: [userId], references: [id])
+  items       OrderItem[]
+  payment     Payment?
+
+  @@index([userId])
+  @@index([status])
+  @@index([createdAt])
+  @@map("orders")
+}
+
+model OrderItem {
+  id           Int     @id @default(autoincrement())
+  orderId      Int     @map("order_id")
+  productId    Int     @map("product_id")
+  quantity     Int
+  priceAtOrder Decimal @db.Decimal(10, 2) @map("price_at_order")
+  order        Order   @relation(fields: [orderId], references: [id])
+  product      Product @relation(fields: [productId], references: [id])
+
+  @@map("order_items")
+}
+
+model Payment {
+  id            Int           @id @default(autoincrement())
+  orderId       Int           @unique @map("order_id")
+  method        PaymentType
+  transactionId String?       @map("transaction_id")
+  status        PaymentStatus @default(PENDING)
+  createdAt     DateTime      @default(now()) @map("created_at")
+  order         Order         @relation(fields: [orderId], references: [id])
+
+  @@map("payments")
+}
+
+model SpinPrize {
+  id             Int           @id @default(autoincrement())
+  name           String
+  description    String?
+  imageUrl       String?       @map("image_url")
+  weight         Int
+  stockRemaining Int?          @map("stock_remaining")
+  isActive       Boolean       @default(true) @map("is_active")
+  color          String        @default("#FF6B6B")
+  createdAt      DateTime      @default(now()) @map("created_at")
+  spinHistory    SpinHistory[]
+
+  @@map("spin_prizes")
+}
+
+model SpinHistory {
+  id         Int       @id @default(autoincrement())
+  userId     Int       @map("user_id")
+  prizeId    Int       @map("prize_id")
+  spunAt     DateTime  @default(now()) @map("spun_at")
+  redeemed   Boolean   @default(false)
+  redeemedAt DateTime? @map("redeemed_at")
+  user       User      @relation(fields: [userId], references: [id])
+  prize      SpinPrize @relation(fields: [prizeId], references: [id])
+
+  @@index([userId, spunAt])
+  @@index([redeemed])
+  @@map("spin_history")
+}
+
+model Deal {
+  id          Int        @id @default(autoincrement())
+  title       String
+  description String?
+  imageUrl    String?    @map("image_url")
+  dealPrice   Decimal    @db.Decimal(10, 2) @map("deal_price")
+  isActive    Boolean    @default(true) @map("is_active")
+  isFeatured  Boolean    @default(false) @map("is_featured")
+  createdAt   DateTime   @default(now()) @map("created_at")
+  items       DealItem[]
+
+  @@index([isActive])
+  @@index([isFeatured])
+  @@map("deals")
+}
+
+model DealItem {
+  id          Int      @id @default(autoincrement())
+  dealId      Int      @map("deal_id")
+  productId   Int?     @map("product_id")   // null for custom items
+  quantity    Int      @default(1)
+  customName  String?  @map("custom_name")  // for manually added items
+  customPrice Decimal? @db.Decimal(10, 2) @map("custom_price") // for manually added items
+  deal        Deal     @relation(fields: [dealId], references: [id], onDelete: Cascade)
+  product     Product? @relation(fields: [productId], references: [id])
+
+  @@map("deal_items")
+}
+
+model AppConfig {
+  id        Int      @id @default(autoincrement())
+  key       String   @unique
+  value     String
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("app_config")
+}

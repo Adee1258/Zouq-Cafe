@@ -3,17 +3,24 @@ const webpush  = require('web-push');
 const prisma   = require('../config/prisma');
 const { success, error } = require('../utils/response');
 
-// Configure VAPID once at module load
-webpush.setVapidDetails(
-  process.env.VAPID_EMAIL,
-  process.env.VAPID_PUBLIC_KEY,
-  process.env.VAPID_PRIVATE_KEY,
-);
+// Configure VAPID once at module load — only if all keys are present
+const vapidEmail     = process.env.VAPID_EMAIL;
+const vapidPublicKey = process.env.VAPID_PUBLIC_KEY;
+const vapidPrivateKey = process.env.VAPID_PRIVATE_KEY;
+
+let vapidConfigured = false;
+if (vapidEmail && vapidPublicKey && vapidPrivateKey) {
+  webpush.setVapidDetails(vapidEmail, vapidPublicKey, vapidPrivateKey);
+  vapidConfigured = true;
+} else {
+  console.warn('[push] VAPID keys not set — push notifications disabled.');
+}
 
 // ─── GET /api/push/vapid-public-key ──────────────────────────────────────────
 // Frontend calls this to get the public key for subscription
 const getVapidPublicKey = (req, res) => {
-  return success(res, { publicKey: process.env.VAPID_PUBLIC_KEY });
+  if (!vapidConfigured) return error(res, 'Push notifications not configured.', 503);
+  return success(res, { publicKey: vapidPublicKey });
 };
 
 // ─── POST /api/push/subscribe ─────────────────────────────────────────────────
@@ -58,6 +65,7 @@ const unsubscribe = async (req, res) => {
 
 // ─── Internal helper — send push to all admin subscriptions ──────────────────
 const sendToAdmins = async (payload) => {
+  if (!vapidConfigured) return; // silently skip if VAPID not set
   try {
     // Get all admin users
     const admins = await prisma.user.findMany({

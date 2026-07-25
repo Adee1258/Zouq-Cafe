@@ -20,7 +20,7 @@ app.use(cors({
   allowedHeaders: ['Content-Type', 'Authorization'],
 }));
 
-app.options('*', cors());
+app.options('/{*path}', cors());
 
 // ─── Rate Limiters ────────────────────────────────────────────────────────────
 const isProd = process.env.NODE_ENV === 'production';

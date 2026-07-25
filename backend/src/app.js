@@ -13,30 +13,14 @@ app.use(helmet({
 }));
 
 // ─── CORS ─────────────────────────────────────────────────────────────────────
-const allowedOrigins = [
-  process.env.CLIENT_URL,
-  process.env.CLIENT_URL_2,
-  'http://localhost:5173',
-  'http://127.0.0.1:5173',
-  'https://zouq-cafe-adts.vercel.app',
-  'https://zouq-cafe.vercel.app',
-].filter(Boolean);
-
+// ─── CORS ─────────────────────────────────────────────────────────────────────
 app.use(cors({
-  origin: (origin, callback) => {
-    if (!origin) return callback(null, true);
-    if (
-      allowedOrigins.includes(origin) ||
-      origin.endsWith('.vercel.app')
-    ) return callback(null, true);
-    return callback(new Error(`CORS policy: origin ${origin} not allowed`));
-  },
+  origin: true, // Allow all origins — restrict after stable deployment
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization'],
 }));
 
-// Handle preflight OPTIONS requests
 app.options('*', cors());
 
 // ─── Rate Limiters ────────────────────────────────────────────────────────────

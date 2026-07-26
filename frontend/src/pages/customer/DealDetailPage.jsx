@@ -117,11 +117,6 @@ const DealDetailPage = () => {
                           {item.variantName}
                         </span>
                       )}
-                      {item.productPrice > 0 && (
-                        <p className="text-xs text-gray-400">
-                          Rs. {Number(item.productPrice || item.customPrice).toLocaleString()} each
-                        </p>
-                      )}
                     </div>
                     {item.quantity > 1 && (
                       <span className="text-xs font-bold text-orange-500 bg-white px-2 py-1 rounded-full flex-shrink-0 border border-orange-100">

@@ -190,7 +190,11 @@ const CheckoutPage = () => {
           });
         }
         // Regular product
-        return [{ productId: i.id, quantity: i.quantity }];
+        return [{
+          productId:   i.productId || i.id,   // productId set by cartStore, fallback to id for old items
+          variantId:   i.variantId || null,
+          quantity:    i.quantity,
+        }];
       });
 
       // Safety check — should never be empty but guard anyway

@@ -57,6 +57,9 @@ const createOrder = async (req, res) => {
     const products = uniqueProductIds.length > 0
       ? await prisma.product.findMany({
           where: { id: { in: uniqueProductIds }, isAvailable: true },
+          include: {
+            variants: { select: { id: true, price: true, isAvailable: true } },
+          },
         })
       : [];
 
@@ -64,8 +67,13 @@ const createOrder = async (req, res) => {
       return error(res, 'One or more items are unavailable or no longer exist.', 400);
     }
 
-    const priceMap = {};
-    products.forEach((p) => { priceMap[p.id] = Number(p.price); });
+    // Build price map — if item has variantId, use variant price; else base price
+    const priceMap    = {};
+    const variantMap  = {};  // variantId → price
+    products.forEach((p) => {
+      priceMap[p.id] = Number(p.price);
+      p.variants?.forEach((v) => { variantMap[v.id] = Number(v.price); });
+    });
 
     // Build a map of dealCartKey → { dealId, dealTitle } from dealOverrides
     // so we can tag each item with its deal info when building orderItems.
@@ -88,7 +96,10 @@ const createOrder = async (req, res) => {
     // Build order items and sum full (non-deal) prices for menu items
     let totalAmount = 0;
     const orderItems = menuItems.map((item) => {
-      const price = priceMap[item.productId];
+      // Use variant price if variantId present, else base product price
+      const price = item.variantId && variantMap[item.variantId] !== undefined
+        ? variantMap[item.variantId]
+        : priceMap[item.productId];
       totalAmount += price * item.quantity;
       const base = { productId: item.productId, quantity: item.quantity, priceAtOrder: price };
       // Attach deal info if this item belongs to a deal

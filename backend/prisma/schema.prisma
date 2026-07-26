@@ -81,6 +81,7 @@ model Product {
   price       Decimal     @db.Decimal(10, 2)
   imageUrl    String?     @map("image_url")
   isAvailable Boolean     @default(true) @map("is_available")
+  isFeatured  Boolean     @default(false) @map("is_featured")
   createdAt   DateTime    @default(now()) @map("created_at")
   category    Category    @relation(fields: [categoryId], references: [id])
   orderItems  OrderItem[]
@@ -88,6 +89,7 @@ model Product {
 
   @@index([categoryId])
   @@index([isAvailable])
+  @@index([isFeatured])
   @@map("products")
 }
 

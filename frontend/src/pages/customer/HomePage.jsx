@@ -18,27 +18,30 @@ const CATEGORY_IMAGES = {
 const CATEGORY_EMOJI = { BBQ: '🥩', 'Fast Food': '🍔', Drinks: '🥤', 'Drink Corner': '🧃' };
 
 const HomePage = () => {
-  const { categories, products, isLoading: loading, fetchData } = useDataStore();
-  const featuredProducts = products.slice(0, 8);
+  const { categories, isLoading: loading, fetchData } = useDataStore();
   const addItem = useCartStore((s) => s.addItem);
   const addDeal = useCartStore((s) => s.addDeal);
 
-  const [deals,   setDeals]   = useState([]);
-  const [search, setSearch]           = useState('');
-  const [searchResults, setSearchResults] = useState([]);
-  const [searching, setSearching]     = useState(false);
-  const [slide, setSlide]             = useState(0);
-  const [filterOpen, setFilterOpen]   = useState(false);
-  const [activeCategory, setActiveCategory] = useState(null); // null = all
+  const [deals,            setDeals]            = useState([]);
+  const [featuredProducts, setFeaturedProducts] = useState([]);
+  const [search,           setSearch]           = useState('');
+  const [searchResults,    setSearchResults]    = useState([]);
+  const [searching,        setSearching]        = useState(false);
+  const [slide,            setSlide]            = useState(0);
+  const [filterOpen,       setFilterOpen]       = useState(false);
+  const [activeCategory,   setActiveCategory]   = useState(null);
 
   const navigate   = useNavigate();
   const inputRef   = useRef(null);
 
   useEffect(() => { fetchData(); }, [fetchData]);
 
-  // Fetch active featured deals for homepage
+  // Fetch active featured deals + featured products for homepage
   useEffect(() => {
     api.get('/deals?featured=true').then((r) => setDeals(r.data.data.deals)).catch(() => {});
+    api.get('/products?featured=true&available=true')
+      .then((r) => setFeaturedProducts(r.data.data.products))
+      .catch(() => {});
   }, []);
 
   // Auto-slide — cycle through categories as hero slides
@@ -400,9 +403,9 @@ const HomePage = () => {
       )}
 
       {/* ═══════════════════════════════════════════════════════
-          POPULAR ITEMS
+          POPULAR ITEMS — admin-featured products only
       ════════════════════════════════════════════════════════ */}
-      {featuredProducts.length > 0 && (
+      {featuredProducts.length > 0 ? (
         <section className="px-3 sm:px-4 mt-6 pb-8">
           <div className="flex items-center justify-between mb-3">
             <span className="text-base font-extrabold text-gray-900 flex items-center gap-1.5">
@@ -427,6 +430,21 @@ const HomePage = () => {
             {featuredProducts.map((product) => (
               <ProductCard key={product.id} product={product} />
             ))}
+          </div>
+        </section>
+      ) : (
+        /* No featured products yet — show a soft CTA to browse the menu */
+        <section className="px-3 sm:px-4 mt-6 pb-8 text-center">
+          <div className="bg-orange-50 rounded-2xl py-10 px-6">
+            <p className="text-3xl mb-2">🍽️</p>
+            <p className="font-bold text-gray-800 mb-1">Explore Our Menu</p>
+            <p className="text-sm text-gray-500 mb-4">Freshly prepared just for you</p>
+            <Link
+              to="/menu"
+              className="inline-flex items-center gap-1.5 bg-orange-500 hover:bg-orange-600 text-white font-bold px-5 py-2.5 rounded-xl text-sm transition-colors"
+            >
+              View Full Menu <ChevronRight size={14} />
+            </Link>
           </div>
         </section>
       )}

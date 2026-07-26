@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { Plus, Pencil, Trash2, ToggleLeft, ToggleRight, Search, X, Upload, Image } from 'lucide-react';
+import { Plus, Pencil, Trash2, ToggleLeft, ToggleRight, Search, X, Upload, Image, Star } from 'lucide-react';
 import toast from 'react-hot-toast';
 import api from '../../lib/api';
 import Spinner from '../../components/ui/Spinner';
@@ -221,6 +221,20 @@ const AdminProductsPage = () => {
     } catch (err) { toast.error(err.message); }
   };
 
+  const handleFeature = async (product) => {
+    try {
+      const res = await api.patch(`/products/${product.id}/feature`);
+      setProducts((prev) =>
+        prev.map((p) => p.id === product.id ? res.data.data.product : p)
+      );
+      toast.success(
+        res.data.data.product.isFeatured
+          ? `⭐ ${product.name} featured on Home!`
+          : `${product.name} removed from Home`
+      );
+    } catch (err) { toast.error(err.message); }
+  };
+
   const handleDelete = async (product) => {
     if (!window.confirm(`Delete "${product.name}"? This cannot be undone.`)) return;
     try {
@@ -306,12 +320,30 @@ const AdminProductsPage = () => {
                       <td className="px-5 py-3.5 text-gray-500">{p.category?.name}</td>
                       <td className="px-5 py-3.5 font-semibold text-gray-900">Rs. {Number(p.price).toLocaleString()}</td>
                       <td className="px-5 py-3.5">
-                        <Badge variant={p.isAvailable ? 'success' : 'default'}>
-                          {p.isAvailable ? 'Available' : 'Unavailable'}
-                        </Badge>
+                        <div className="flex flex-col gap-1">
+                          <Badge variant={p.isAvailable ? 'success' : 'default'}>
+                            {p.isAvailable ? 'Available' : 'Unavailable'}
+                          </Badge>
+                          {p.isFeatured && (
+                            <Badge variant="warning" className="text-[10px]">⭐ Featured</Badge>
+                          )}
+                        </div>
                       </td>
                       <td className="px-5 py-3.5">
                         <div className="flex items-center gap-2 justify-end">
+                          {/* Featured toggle */}
+                          <button
+                            onClick={() => handleFeature(p)}
+                            title={p.isFeatured ? 'Remove from Home' : 'Feature on Home'}
+                            className={`p-2 rounded-lg min-h-[36px] min-w-[36px] flex items-center justify-center transition-colors ${
+                              p.isFeatured
+                                ? 'bg-yellow-50 text-yellow-500 hover:bg-yellow-100'
+                                : 'hover:bg-gray-100 text-gray-300 hover:text-yellow-400'
+                            }`}
+                          >
+                            <Star size={16} className={p.isFeatured ? 'fill-yellow-400' : ''} />
+                          </button>
+                          {/* Availability toggle */}
                           <button
                             onClick={() => handleToggle(p)}
                             title={p.isAvailable ? 'Disable' : 'Enable'}
@@ -344,10 +376,15 @@ const AdminProductsPage = () => {
           <div className="sm:hidden space-y-3">
             {filtered.map((p) => (
               <div key={p.id} className="bg-white rounded-2xl p-4 shadow-sm flex items-center gap-3">
-                <div className="w-14 h-14 rounded-xl overflow-hidden bg-orange-50 flex-shrink-0">
+                <div className="relative w-14 h-14 rounded-xl overflow-hidden bg-orange-50 flex-shrink-0">
                   {p.imageUrl
                     ? <img src={p.imageUrl} alt={p.name} className="w-full h-full object-cover" />
                     : <div className="w-full h-full flex items-center justify-center text-2xl">🍽️</div>}
+                  {p.isFeatured && (
+                    <span className="absolute top-0.5 right-0.5 bg-yellow-400 rounded-full p-0.5">
+                      <Star size={9} className="fill-white text-white" />
+                    </span>
+                  )}
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="font-semibold text-gray-900 text-sm truncate">{p.name}</p>
@@ -357,9 +394,21 @@ const AdminProductsPage = () => {
                     <Badge variant={p.isAvailable ? 'success' : 'default'} className="text-[10px]">
                       {p.isAvailable ? 'Available' : 'Off'}
                     </Badge>
+                    {p.isFeatured && (
+                      <Badge variant="warning" className="text-[10px]">⭐ Home</Badge>
+                    )}
                   </div>
                 </div>
                 <div className="flex flex-col gap-1">
+                  <button
+                    onClick={() => handleFeature(p)}
+                    title={p.isFeatured ? 'Remove from Home' : 'Feature on Home'}
+                    className={`p-2 rounded-lg min-h-[36px] min-w-[36px] flex items-center justify-center transition-colors ${
+                      p.isFeatured ? 'bg-yellow-50 text-yellow-500' : 'hover:bg-gray-100 text-gray-300'
+                    }`}
+                  >
+                    <Star size={15} className={p.isFeatured ? 'fill-yellow-400' : ''} />
+                  </button>
                   <button onClick={() => setModal(p)} className="p-2 rounded-lg hover:bg-orange-50 text-orange-500 min-h-[36px] min-w-[36px] flex items-center justify-center">
                     <Pencil size={15} />
                   </button>

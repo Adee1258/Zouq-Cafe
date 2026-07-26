@@ -6,11 +6,12 @@ const { success, error } = require('../utils/response');
 // Public: filter by category, search, available only
 const getProducts = async (req, res) => {
   try {
-    const { categoryId, search, available } = req.query;
+    const { categoryId, search, available, featured } = req.query;
 
     const where = {};
     if (categoryId) where.categoryId = Number(categoryId);
     if (available === 'true') where.isAvailable = true;
+    if (featured === 'true') where.isFeatured = true;
     if (search) {
       where.name = { contains: search, mode: 'insensitive' };
     }
@@ -18,7 +19,7 @@ const getProducts = async (req, res) => {
     const products = await prisma.product.findMany({
       where,
       include: { category: { select: { id: true, name: true } } },
-      orderBy: { createdAt: 'desc' },
+      orderBy: [{ isFeatured: 'desc' }, { createdAt: 'desc' }],
     });
 
     return success(res, { products });
@@ -111,6 +112,31 @@ const toggleAvailability = async (req, res) => {
   }
 };
 
+// ─── PATCH /api/products/:id/feature (admin) ─────────────────────────────────
+// Toggle isFeatured — featured products appear on the home page
+const toggleFeatured = async (req, res) => {
+  try {
+    const product = await prisma.product.findUnique({
+      where: { id: Number(req.params.id) },
+    });
+    if (!product) return error(res, 'Product not found.', 404);
+
+    const updated = await prisma.product.update({
+      where: { id: Number(req.params.id) },
+      data: { isFeatured: !product.isFeatured },
+      include: { category: { select: { id: true, name: true } } },
+    });
+    return success(
+      res,
+      { product: updated },
+      `Product ${updated.isFeatured ? 'featured on home page' : 'removed from home page'}.`
+    );
+  } catch (err) {
+    console.error('[toggleFeatured]', err);
+    return error(res, 'Failed to toggle featured.', 500);
+  }
+};
+
 // ─── DELETE /api/products/:id (admin) ────────────────────────────────────────
 const deleteProduct = async (req, res) => {
   try {
@@ -124,4 +150,4 @@ const deleteProduct = async (req, res) => {
   }
 };
 
-module.exports = { getProducts, getProduct, createProduct, updateProduct, toggleAvailability, deleteProduct };
+module.exports = { getProducts, getProduct, createProduct, updateProduct, toggleAvailability, toggleFeatured, deleteProduct };

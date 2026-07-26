@@ -5,7 +5,7 @@ const { protect, adminOnly } = require('../middleware/auth');
 const validate = require('../middleware/validate');
 const { uploadProduct } = require('../config/cloudinary');
 const {
-  getProducts, getProduct, createProduct, updateProduct, toggleAvailability, deleteProduct,
+  getProducts, getProduct, createProduct, updateProduct, toggleAvailability, toggleFeatured, deleteProduct,
 } = require('../controllers/product.controller');
 
 // Public
@@ -22,6 +22,7 @@ const createRules = [
 router.post('/', protect, adminOnly, uploadProduct.single('image'), createRules, validate, createProduct);
 router.patch('/:id', protect, adminOnly, uploadProduct.single('image'), updateProduct);
 router.patch('/:id/toggle', protect, adminOnly, toggleAvailability);
+router.patch('/:id/feature', protect, adminOnly, toggleFeatured);
 router.delete('/:id', protect, adminOnly, deleteProduct);
 
 module.exports = router;

@@ -49,6 +49,7 @@ const OrdersPage = lazy(() => import('./pages/customer/OrdersPage'));
 const SpinPage = lazy(() => import('./pages/customer/SpinPage'));
 const ProfilePage = lazy(() => import('./pages/customer/ProfilePage'));
 const HotDealsPage = lazy(() => import('./pages/customer/HotDealsPage'));
+const DealDetailPage = lazy(() => import('./pages/customer/DealDetailPage'));
 const NotFoundPage = lazy(() => import('./pages/customer/NotFoundPage'));
 const { PaymentSuccessPage, PaymentFailedPage } = { // lazy-compatible named exports
   PaymentSuccessPage: lazy(() =>
@@ -129,6 +130,7 @@ const App = () => {
               <Route path="/cart" element={<CartPage />} />
               <Route path="/spin" element={<SpinPage />} />
               <Route path="/deals" element={<HotDealsPage />} />
+              <Route path="/deals/:id" element={<DealDetailPage />} />
               <Route path="/lucky-draw" element={<LuckyDrawPage />} />
 
               {/* Auth-required customer routes */}

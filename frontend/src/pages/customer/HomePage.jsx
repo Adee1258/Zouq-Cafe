@@ -369,9 +369,13 @@ const HomePage = () => {
                     )}
                     <div className="absolute bottom-0 left-0 right-0 px-3 pb-2">
                       <p className="text-[9px] font-bold text-orange-300 uppercase tracking-widest mb-0.5">🔥 Limited Offer</p>
-                      <p className="text-white font-extrabold text-sm leading-tight drop-shadow-md tracking-tight">
+                      <Link
+                        to={`/deals/${deal.id}`}
+                        onClick={(e) => e.stopPropagation()}
+                        className="text-white font-extrabold text-sm leading-tight drop-shadow-md tracking-tight hover:text-orange-200 transition-colors line-clamp-1 block"
+                      >
                         {deal.title}
-                      </p>
+                      </Link>
                     </div>
                   </div>
                   <div className="p-3">

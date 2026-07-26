@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { ShoppingCart, Flame, Tag, Search, X, Heart, Plus, Minus } from 'lucide-react';
-import toast from 'react-hot-toast';
+import { ShoppingCart, Flame, Tag, Search, X, Heart, Plus, Minus } from 'lucide-react';import toast from 'react-hot-toast';
 import api from '../../lib/api';
 import Spinner from '../../components/ui/Spinner';
 import useCartStore from '../../stores/cartStore';
@@ -39,8 +38,8 @@ const DealCard = ({ deal }) => {
 
   return (
     <div className="bg-white rounded-3xl shadow-sm overflow-hidden hover:shadow-xl transition-all duration-300 flex flex-col group">
-      {/* Image */}
-      <div className="relative h-48 sm:h-56 overflow-hidden bg-gradient-to-br from-orange-100 to-amber-50 flex-shrink-0">
+      {/* Image — clickable → detail page */}
+      <Link to={`/deals/${deal.id}`} className="relative h-48 sm:h-56 overflow-hidden bg-gradient-to-br from-orange-100 to-amber-50 flex-shrink-0 block">
         {deal.imageUrl ? (
           <img src={deal.imageUrl} alt={deal.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
         ) : (
@@ -63,7 +62,7 @@ const DealCard = ({ deal }) => {
 
         {/* Favorite button */}
         <button
-          onClick={handleFav}
+          onClick={(e) => { e.preventDefault(); handleFav(); }}
           style={{ minHeight: 'unset', minWidth: 'unset' }}
           className={`absolute top-3 right-3 w-8 h-8 rounded-full flex items-center justify-center shadow-lg backdrop-blur-sm transition-all duration-200 active:scale-90 ${
             fav ? 'bg-red-500 text-white' : 'bg-white/80 text-gray-400 hover:text-red-500'
@@ -81,7 +80,7 @@ const DealCard = ({ deal }) => {
             {deal.title}
           </h3>
         </div>
-      </div>
+      </Link>
 
       <div className="p-4 flex flex-col flex-1">
         {deal.description && (

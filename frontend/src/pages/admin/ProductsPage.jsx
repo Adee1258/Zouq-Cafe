@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { Plus, Pencil, Trash2, ToggleLeft, ToggleRight, Search, X, Upload, Image, Star } from 'lucide-react';
+import { Plus, Pencil, Trash2, ToggleLeft, ToggleRight, Search, X, Upload, Image, Star, Minus } from 'lucide-react';
 import toast from 'react-hot-toast';
 import api from '../../lib/api';
 import Spinner from '../../components/ui/Spinner';
@@ -15,6 +15,13 @@ const ProductModal = ({ product, categories, onClose, onSaved }) => {
     categoryId: product?.categoryId ? String(product.categoryId) : '',
     isAvailable: product?.isAvailable ?? true,
   });
+  // variants: array of {id?(existing), name, price, isAvailable}
+  const [variants, setVariants] = useState(
+    product?.variants?.length
+      ? product.variants.map((v) => ({ id: v.id, name: v.name, price: String(v.price), isAvailable: v.isAvailable }))
+      : []
+  );
+  const hasVariants = variants.length > 0;
   const [imageFile, setImageFile] = useState(null);
   const [preview, setPreview] = useState(product?.imageUrl || null);
   const [errors, setErrors] = useState({});
@@ -22,6 +29,18 @@ const ProductModal = ({ product, categories, onClose, onSaved }) => {
   const fileRef = useRef();
 
   const set = (f) => (e) => setForm((p) => ({ ...p, [f]: e.target.value }));
+
+  // Variant helpers
+  const addVariant = () => setVariants((v) => [...v, { name: '', price: '', isAvailable: true }]);
+  const removeVariant = (i) => setVariants((v) => v.filter((_, idx) => idx !== i));
+  const setVariantField = (i, field, val) =>
+    setVariants((v) => v.map((vt, idx) => idx === i ? { ...vt, [field]: val } : vt));
+
+  const SIZES = ['Small', 'Medium', 'Large'];
+  const quickAddSize = (name) => {
+    if (!variants.find((v) => v.name === name))
+      setVariants((v) => [...v, { name, price: '', isAvailable: true }]);
+  };
 
   const handleImage = (e) => {
     const file = e.target.files?.[0];
@@ -34,8 +53,14 @@ const ProductModal = ({ product, categories, onClose, onSaved }) => {
     const e = {};
     if (!form.name.trim()) e.name = 'Name is required.';
     if (!form.categoryId) e.categoryId = 'Category is required.';
-    if (!form.price || isNaN(Number(form.price)) || Number(form.price) < 0)
+    // Price required only when no variants
+    if (!hasVariants && (!form.price || isNaN(Number(form.price)) || Number(form.price) < 0))
       e.price = 'Valid price is required.';
+    // Each variant must have name + valid price
+    variants.forEach((v, i) => {
+      if (!v.name.trim()) e[`v_name_${i}`] = 'Size name required.';
+      if (!v.price || isNaN(Number(v.price)) || Number(v.price) < 0) e[`v_price_${i}`] = 'Price required.';
+    });
     setErrors(e);
     return Object.keys(e).length === 0;
   };
@@ -44,28 +69,41 @@ const ProductModal = ({ product, categories, onClose, onSaved }) => {
     e.preventDefault();
     if (!validate()) return;
     setLoading(true);
-
     try {
-      // Use FormData so image file can be sent alongside text fields
       const fd = new FormData();
       fd.append('name', form.name.trim());
       fd.append('description', form.description.trim());
-      fd.append('price', form.price);
+      // Use 0 as base price when variants exist (variants carry real prices)
+      fd.append('price', hasVariants ? '0' : form.price);
       fd.append('categoryId', form.categoryId);
       fd.append('isAvailable', String(form.isAvailable));
       if (imageFile) fd.append('image', imageFile);
 
+      let savedProduct;
       if (product) {
-        await api.patch(`/products/${product.id}`, fd, {
+        const res = await api.patch(`/products/${product.id}`, fd, {
           headers: { 'Content-Type': 'multipart/form-data' },
         });
+        savedProduct = res.data.data.product;
         toast.success('Product updated!');
       } else {
-        await api.post('/products', fd, {
+        const res = await api.post('/products', fd, {
           headers: { 'Content-Type': 'multipart/form-data' },
         });
+        savedProduct = res.data.data.product;
         toast.success('Product created!');
       }
+
+      // Save variants via PUT /products/:id/variants (replaces all)
+      await api.put(`/products/${savedProduct.id}/variants`, {
+        variants: variants.map((v, i) => ({
+          name:        v.name.trim(),
+          price:       Number(v.price),
+          isAvailable: v.isAvailable,
+          sortOrder:   i,
+        })),
+      });
+
       onSaved();
     } catch (err) {
       toast.error(err.message);
@@ -140,13 +178,103 @@ const ProductModal = ({ product, categories, onClose, onSaved }) => {
                 {errors.categoryId && <p className="text-xs text-red-500 mt-1">⚠ {errors.categoryId}</p>}
               </div>
               <div>
-                <label className="text-sm font-medium text-gray-700 block mb-1.5">Price (Rs.) <span className="text-red-500">*</span></label>
-                <input
-                  type="number" min="0" step="1" value={form.price} onChange={set('price')} placeholder="350"
-                  className={`w-full rounded-xl border px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400 min-h-[44px] ${errors.price ? 'border-red-400' : 'border-gray-200'}`}
-                />
-                {errors.price && <p className="text-xs text-red-500 mt-1">⚠ {errors.price}</p>}
+                <label className="text-sm font-medium text-gray-700 block mb-1.5">
+                  Price (Rs.) {!hasVariants && <span className="text-red-500">*</span>}
+                  {hasVariants && <span className="text-xs text-gray-400 font-normal ml-1">— set per size</span>}
+                </label>
+                {hasVariants ? (
+                  <div className="w-full rounded-xl border border-gray-100 bg-gray-50 px-4 py-3 text-sm text-gray-400 min-h-[44px] flex items-center">
+                    Varies by size
+                  </div>
+                ) : (
+                  <>
+                    <input
+                      type="number" min="0" step="1" value={form.price} onChange={set('price')} placeholder="350"
+                      className={`w-full rounded-xl border px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400 min-h-[44px] ${errors.price ? 'border-red-400' : 'border-gray-200'}`}
+                    />
+                    {errors.price && <p className="text-xs text-red-500 mt-1">⚠ {errors.price}</p>}
+                  </>
+                )}
               </div>
+            </div>
+
+            {/* ── Variants / Sizes ── */}
+            <div className="border border-gray-100 rounded-xl p-4 space-y-3">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-semibold text-gray-700">Sizes / Variants</p>
+                  <p className="text-xs text-gray-400">Add Small, Medium, Large with separate prices</p>
+                </div>
+                <button
+                  type="button" onClick={addVariant}
+                  style={{ minHeight: 'unset', minWidth: 'unset' }}
+                  className="flex items-center gap-1 text-xs bg-orange-500 hover:bg-orange-600 text-white font-semibold px-2.5 py-1.5 rounded-lg"
+                >
+                  <Plus size={12} /> Add Size
+                </button>
+              </div>
+
+              {/* Quick-add chips */}
+              {variants.length === 0 && (
+                <div className="flex gap-2">
+                  {SIZES.map((s) => (
+                    <button
+                      key={s} type="button" onClick={() => quickAddSize(s)}
+                      style={{ minHeight: 'unset', minWidth: 'unset' }}
+                      className="px-3 py-1.5 rounded-full text-xs font-semibold border border-orange-200 text-orange-500 hover:bg-orange-50 transition-colors"
+                    >
+                      + {s}
+                    </button>
+                  ))}
+                </div>
+              )}
+
+              {variants.length > 0 && (
+                <div className="space-y-2">
+                  {variants.map((v, i) => (
+                    <div key={i} className="flex items-center gap-2 bg-gray-50 rounded-xl px-3 py-2">
+                      {/* Size name */}
+                      <input
+                        value={v.name}
+                        onChange={(e) => setVariantField(i, 'name', e.target.value)}
+                        placeholder="e.g. Small"
+                        style={{ minHeight: 'unset' }}
+                        className={`w-28 rounded-lg border px-2.5 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400 ${errors[`v_name_${i}`] ? 'border-red-400' : 'border-gray-200'} bg-white`}
+                      />
+                      {/* Price */}
+                      <div className="flex items-center flex-1 gap-1.5">
+                        <span className="text-xs text-gray-400 font-medium">Rs.</span>
+                        <input
+                          type="number" min="0" step="1"
+                          value={v.price}
+                          onChange={(e) => setVariantField(i, 'price', e.target.value)}
+                          placeholder="0"
+                          style={{ minHeight: 'unset' }}
+                          className={`flex-1 rounded-lg border px-2.5 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400 ${errors[`v_price_${i}`] ? 'border-red-400' : 'border-gray-200'} bg-white`}
+                        />
+                      </div>
+                      {/* Available toggle */}
+                      <button
+                        type="button"
+                        onClick={() => setVariantField(i, 'isAvailable', !v.isAvailable)}
+                        style={{ minHeight: 'unset', minWidth: 'unset' }}
+                        title={v.isAvailable ? 'Available' : 'Unavailable'}
+                        className={`w-8 h-4 rounded-full transition-colors flex-shrink-0 relative ${v.isAvailable ? 'bg-orange-500' : 'bg-gray-300'}`}
+                      >
+                        <div className={`absolute top-0.5 w-3 h-3 bg-white rounded-full shadow transition-transform ${v.isAvailable ? 'left-4' : 'left-0.5'}`} />
+                      </button>
+                      {/* Remove */}
+                      <button
+                        type="button" onClick={() => removeVariant(i)}
+                        style={{ minHeight: 'unset', minWidth: 'unset' }}
+                        className="p-1 rounded-lg hover:bg-red-50 text-red-400"
+                      >
+                        <X size={14} />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
 
             {/* Description */}
@@ -318,7 +446,20 @@ const AdminProductsPage = () => {
                         </div>
                       </td>
                       <td className="px-5 py-3.5 text-gray-500">{p.category?.name}</td>
-                      <td className="px-5 py-3.5 font-semibold text-gray-900">Rs. {Number(p.price).toLocaleString()}</td>
+                      <td className="px-5 py-3.5 font-semibold text-gray-900">
+                        {p.variants?.length > 0 ? (
+                          <div className="flex flex-col gap-0.5">
+                            {p.variants.map((v) => (
+                              <span key={v.id} className="text-xs">
+                                <span className="font-medium text-gray-600">{v.name}:</span>{' '}
+                                <span className="text-orange-600 font-bold">Rs. {Number(v.price).toLocaleString()}</span>
+                              </span>
+                            ))}
+                          </div>
+                        ) : (
+                          `Rs. ${Number(p.price).toLocaleString()}`
+                        )}
+                      </td>
                       <td className="px-5 py-3.5">
                         <div className="flex flex-col gap-1">
                           <Badge variant={p.isAvailable ? 'success' : 'default'}>
@@ -390,7 +531,13 @@ const AdminProductsPage = () => {
                   <p className="font-semibold text-gray-900 text-sm truncate">{p.name}</p>
                   <p className="text-xs text-gray-400">{p.category?.name}</p>
                   <div className="flex items-center gap-2 mt-1">
-                    <span className="text-orange-600 font-bold text-sm">Rs. {Number(p.price).toLocaleString()}</span>
+                    {p.variants?.length > 0 ? (
+                      <span className="text-orange-600 font-bold text-xs">
+                        Rs. {Number(p.variants[0].price).toLocaleString()} – {Number(p.variants[p.variants.length-1].price).toLocaleString()}
+                      </span>
+                    ) : (
+                      <span className="text-orange-600 font-bold text-sm">Rs. {Number(p.price).toLocaleString()}</span>
+                    )}
                     <Badge variant={p.isAvailable ? 'success' : 'default'} className="text-[10px]">
                       {p.isAvailable ? 'Available' : 'Off'}
                     </Badge>

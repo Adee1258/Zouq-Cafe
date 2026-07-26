@@ -1,36 +1,56 @@
-// ProductCard — used in category grid and search results
+// ProductCard — used in category grid, search results, and homepage featured
+import { useState } from 'react';
 import { Plus, Minus, Heart } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import useCartStore from '../../stores/cartStore';
 import useFavoritesStore from '../../stores/favoritesStore';
+import toast from 'react-hot-toast';
 
 const ProductCard = ({ product }) => {
-  const items     = useCartStore((s) => s.items);
-  const addItem   = useCartStore((s) => s.addItem);
+  const items      = useCartStore((s) => s.items);
+  const addItem    = useCartStore((s) => s.addItem);
   const removeItem = useCartStore((s) => s.removeItem);
 
   const toggleFavorite = useFavoritesStore((s) => s.toggleFavorite);
   const isFavorite     = useFavoritesStore((s) => s.isFavorite);
   const fav = isFavorite(product.id, 'product');
 
-  const cartItem = items.find((i) => i.id === product.id);
-  const qty = cartItem?.quantity || 0;
+  const hasVariants = product.variants?.length > 0;
+  // Selected variant for this card (default = first)
+  const [selectedVariant, setSelectedVariant] = useState(
+    hasVariants ? product.variants[0] : null
+  );
+
+  // Cart key matches cartStore logic
+  const cartId   = selectedVariant ? `${product.id}-v${selectedVariant.id}` : product.id;
+  const cartItem = items.find((i) => i.id === cartId);
+  const qty      = cartItem?.quantity || 0;
+
+  const effectivePrice = selectedVariant ? Number(selectedVariant.price) : Number(product.price);
 
   const handleAdd = (e) => {
     e.preventDefault();
-    addItem({ id: product.id, name: product.name, price: product.price, imageUrl: product.imageUrl });
+    addItem({
+      id:          product.id,
+      productId:   product.id,
+      name:        selectedVariant ? `${product.name} — ${selectedVariant.name}` : product.name,
+      price:       effectivePrice,
+      imageUrl:    product.imageUrl,
+      variantId:   selectedVariant?.id   || null,
+      variantName: selectedVariant?.name || null,
+    });
   };
 
   const handleRemove = (e) => {
     e.preventDefault();
-    removeItem(product.id);
+    removeItem(cartId);
   };
 
   const handleFav = (e) => {
     e.preventDefault();
     toggleFavorite({
       id: product.id, type: 'product',
-      name: product.name, price: Number(product.price),
+      name: product.name, price: effectivePrice,
       imageUrl: product.imageUrl,
     });
   };
@@ -44,8 +64,7 @@ const ProductCard = ({ product }) => {
       <div className="relative bg-orange-50 overflow-hidden aspect-square">
         {product.imageUrl ? (
           <img
-            src={product.imageUrl}
-            alt={product.name}
+            src={product.imageUrl} alt={product.name}
             className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
             loading="lazy"
           />
@@ -54,12 +73,10 @@ const ProductCard = ({ product }) => {
         )}
         {!product.isAvailable && (
           <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
-            <span className="bg-white text-gray-700 text-xs font-semibold px-3 py-1 rounded-full">
-              Unavailable
-            </span>
+            <span className="bg-white text-gray-700 text-xs font-semibold px-3 py-1 rounded-full">Unavailable</span>
           </div>
         )}
-        {/* Favorite button */}
+        {/* Favorite */}
         <button
           onClick={handleFav}
           style={{ minHeight: 'unset', minWidth: 'unset' }}
@@ -75,17 +92,35 @@ const ProductCard = ({ product }) => {
       {/* Info */}
       <div className="p-3 flex flex-col gap-2 flex-1">
         <div className="flex-1">
-          <h3 className="font-semibold text-gray-900 text-sm leading-tight line-clamp-2">
-            {product.name}
-          </h3>
+          <h3 className="font-semibold text-gray-900 text-sm leading-tight line-clamp-2">{product.name}</h3>
           {product.description && (
-            <p className="text-xs text-gray-400 mt-1 line-clamp-2">{product.description}</p>
+            <p className="text-xs text-gray-400 mt-1 line-clamp-1">{product.description}</p>
           )}
         </div>
 
+        {/* Size chips — only when variants exist */}
+        {hasVariants && (
+          <div className="flex gap-1 flex-wrap" onClick={(e) => e.preventDefault()}>
+            {product.variants.map((v) => (
+              <button
+                key={v.id}
+                onClick={(e) => { e.preventDefault(); setSelectedVariant(v); }}
+                style={{ minHeight: 'unset', minWidth: 'unset' }}
+                className={`px-2 py-0.5 rounded-full text-[10px] font-bold border transition-colors ${
+                  selectedVariant?.id === v.id
+                    ? 'bg-orange-500 text-white border-orange-500'
+                    : 'border-gray-200 text-gray-500 hover:border-orange-300'
+                }`}
+              >
+                {v.name}
+              </button>
+            ))}
+          </div>
+        )}
+
         <div className="flex items-center justify-between gap-2 mt-auto">
           <span className="font-bold text-orange-600 text-base">
-            Rs. {Number(product.price).toLocaleString()}
+            Rs. {effectivePrice.toLocaleString()}
           </span>
 
           {product.isAvailable && (
@@ -99,11 +134,11 @@ const ProductCard = ({ product }) => {
               </button>
             ) : (
               <div className="flex items-center gap-1 bg-orange-50 rounded-xl border border-orange-200">
-                <button onClick={handleRemove} className="p-2 text-orange-500 hover:bg-orange-100 rounded-l-xl transition-colors min-h-[36px] min-w-[36px] flex items-center justify-center" aria-label="Remove one">
+                <button onClick={handleRemove} className="p-2 text-orange-500 hover:bg-orange-100 rounded-l-xl transition-colors min-h-[36px] min-w-[36px] flex items-center justify-center">
                   <Minus size={14} />
                 </button>
                 <span className="text-orange-600 font-bold text-sm w-5 text-center">{qty}</span>
-                <button onClick={handleAdd} className="p-2 text-orange-500 hover:bg-orange-100 rounded-r-xl transition-colors min-h-[36px] min-w-[36px] flex items-center justify-center" aria-label="Add one more">
+                <button onClick={handleAdd} className="p-2 text-orange-500 hover:bg-orange-100 rounded-r-xl transition-colors min-h-[36px] min-w-[36px] flex items-center justify-center">
                   <Plus size={14} />
                 </button>
               </div>

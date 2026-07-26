@@ -270,26 +270,43 @@ const HomePage = () => {
         {/* Search results dropdown */}
         {search && searchResults.length > 0 && (
           <div className="bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden">
-            {searchResults.slice(0, 5).map((p) => (
-              <Link
-                key={p.id}
-                to={`/product/${p.id}`}
-                onClick={clearSearch}
-                className="flex items-center gap-3 px-4 py-3 hover:bg-orange-50 transition-colors border-b border-gray-50 last:border-0"
-              >
-                <div className="w-9 h-9 rounded-lg overflow-hidden bg-orange-100 flex-shrink-0">
-                  {p.imageUrl
-                    ? <img src={p.imageUrl} alt={p.name} className="w-full h-full object-cover" />
-                    : <div className="w-full h-full flex items-center justify-center text-base">🍽️</div>
-                  }
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-gray-800 truncate">{p.name}</p>
-                  <p className="text-xs text-orange-500 font-semibold">Rs. {Number(p.price).toLocaleString()}</p>
-                </div>
-                <ChevronRight size={13} className="text-gray-300 flex-shrink-0" />
-              </Link>
-            ))}
+            {searchResults.slice(0, 5).map((p) => {
+              const hasVariants = p.variants?.length > 0;
+              const minPrice = hasVariants ? Math.min(...p.variants.map((v) => Number(v.price))) : Number(p.price);
+              const maxPrice = hasVariants ? Math.max(...p.variants.map((v) => Number(v.price))) : Number(p.price);
+              return (
+                <Link
+                  key={p.id}
+                  to={`/product/${p.id}`}
+                  onClick={clearSearch}
+                  className="flex items-center gap-3 px-4 py-3 hover:bg-orange-50 transition-colors border-b border-gray-50 last:border-0"
+                >
+                  <div className="w-9 h-9 rounded-lg overflow-hidden bg-orange-100 flex-shrink-0">
+                    {p.imageUrl
+                      ? <img src={p.imageUrl} alt={p.name} className="w-full h-full object-cover" />
+                      : <div className="w-full h-full flex items-center justify-center text-base">🍽️</div>
+                    }
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-gray-800 truncate">{p.name}</p>
+                    <div className="flex items-center gap-1.5 flex-wrap mt-0.5">
+                      <p className="text-xs text-orange-500 font-semibold">
+                        {hasVariants && minPrice !== maxPrice
+                          ? `Rs. ${minPrice.toLocaleString()} – ${maxPrice.toLocaleString()}`
+                          : `Rs. ${minPrice.toLocaleString()}`
+                        }
+                      </p>
+                      {hasVariants && p.variants.map((v) => (
+                        <span key={v.id} className="text-[10px] bg-orange-50 text-orange-500 font-bold px-1.5 py-0.5 rounded-full border border-orange-100">
+                          {v.name}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                  <ChevronRight size={13} className="text-gray-300 flex-shrink-0" />
+                </Link>
+              );
+            })}
             {searchResults.length > 5 && (
               <Link
                 to={`/menu?search=${encodeURIComponent(search)}`}

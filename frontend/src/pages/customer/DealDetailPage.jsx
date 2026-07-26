@@ -112,6 +112,11 @@ const DealDetailPage = () => {
                       <p className="text-sm font-semibold text-gray-800 truncate">
                         {item.productName || item.customName}
                       </p>
+                      {item.variantName && (
+                        <span className="inline-block mt-0.5 text-[10px] font-bold bg-orange-100 text-orange-600 px-2 py-0.5 rounded-full">
+                          {item.variantName}
+                        </span>
+                      )}
                       {item.productPrice > 0 && (
                         <p className="text-xs text-gray-400">
                           Rs. {Number(item.productPrice || item.customPrice).toLocaleString()} each

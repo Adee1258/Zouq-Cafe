@@ -13,6 +13,9 @@ const findDealWithItems = async (id) => {
           product: {
             select: { id: true, name: true, imageUrl: true, price: true, description: true },
           },
+          variant: {
+            select: { id: true, name: true, price: true },
+          },
         },
       },
     },
@@ -28,7 +31,8 @@ const shapeDeal = (deal) => ({
   isFeatured: deal.isFeatured ?? false,
   items: deal.items.map((di) => {
     if (di.product) {
-      // Menu item
+      // Menu item — use variant price if variant selected
+      const effectivePrice = di.variant ? Number(di.variant.price) : Number(di.product.price);
       return {
         id:               di.id,
         quantity:         di.quantity,
@@ -36,8 +40,10 @@ const shapeDeal = (deal) => ({
         productId:        di.product.id,
         productName:      di.product.name,
         productImageUrl:  di.product.imageUrl,
-        productPrice:     Number(di.product.price),
+        productPrice:     effectivePrice,
         productDescription: di.product.description,
+        variantId:        di.variant?.id   || null,
+        variantName:      di.variant?.name || null,
         customName:       null,
         customPrice:      null,
       };
@@ -52,6 +58,8 @@ const shapeDeal = (deal) => ({
         productImageUrl:  null,
         productPrice:     Number(di.customPrice || 0),
         productDescription: null,
+        variantId:        null,
+        variantName:      null,
         customName:       di.customName,
         customPrice:      Number(di.customPrice || 0),
       };
@@ -77,6 +85,9 @@ const getDeals = async (req, res) => {
           include: {
             product: {
               select: { id: true, name: true, imageUrl: true, price: true },
+            },
+            variant: {
+              select: { id: true, name: true, price: true },
             },
           },
         },
@@ -119,10 +130,15 @@ const createDeal = async (req, res) => {
       .filter((it) => it.productId || it.customName?.trim())
       .map((it) => {
         if (it.productId) {
-          return { productId: Number(it.productId), quantity: Number(it.quantity) || 1 };
+          return {
+            productId:  Number(it.productId),
+            variantId:  it.variantId ? Number(it.variantId) : null,
+            quantity:   Number(it.quantity) || 1,
+          };
         } else {
           return {
             productId:   null,
+            variantId:   null,
             quantity:    Number(it.quantity) || 1,
             customName:  it.customName.trim(),
             customPrice: Number(it.customPrice) || 0,
@@ -178,11 +194,17 @@ const updateDeal = async (req, res) => {
         .filter((it) => it.productId || it.customName?.trim())
         .map((it) => {
           if (it.productId) {
-            return { dealId: id, productId: Number(it.productId), quantity: Number(it.quantity) || 1 };
+            return {
+              dealId:    id,
+              productId: Number(it.productId),
+              variantId: it.variantId ? Number(it.variantId) : null,
+              quantity:  Number(it.quantity) || 1,
+            };
           } else {
             return {
               dealId:      id,
               productId:   null,
+              variantId:   null,
               quantity:    Number(it.quantity) || 1,
               customName:  it.customName.trim(),
               customPrice: Number(it.customPrice) || 0,

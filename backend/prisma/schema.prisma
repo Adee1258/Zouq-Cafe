@@ -74,23 +74,38 @@ model Category {
 }
 
 model Product {
-  id          Int         @id @default(autoincrement())
-  categoryId  Int         @map("category_id")
+  id          Int               @id @default(autoincrement())
+  categoryId  Int               @map("category_id")
   name        String
   description String?
-  price       Decimal     @db.Decimal(10, 2)
-  imageUrl    String?     @map("image_url")
-  isAvailable Boolean     @default(true) @map("is_available")
-  isFeatured  Boolean     @default(false) @map("is_featured")
-  createdAt   DateTime    @default(now()) @map("created_at")
-  category    Category    @relation(fields: [categoryId], references: [id])
+  price       Decimal           @db.Decimal(10, 2)
+  imageUrl    String?           @map("image_url")
+  isAvailable Boolean           @default(true) @map("is_available")
+  isFeatured  Boolean           @default(false) @map("is_featured")
+  createdAt   DateTime          @default(now()) @map("created_at")
+  category    Category          @relation(fields: [categoryId], references: [id])
   orderItems  OrderItem[]
   dealItems   DealItem[]
+  variants    ProductVariant[]
 
   @@index([categoryId])
   @@index([isAvailable])
   @@index([isFeatured])
   @@map("products")
+}
+
+model ProductVariant {
+  id          Int       @id @default(autoincrement())
+  productId   Int       @map("product_id")
+  name        String                          // "Small" | "Medium" | "Large"
+  price       Decimal   @db.Decimal(10, 2)
+  isAvailable Boolean   @default(true) @map("is_available")
+  sortOrder   Int       @default(0) @map("sort_order")
+  product     Product   @relation(fields: [productId], references: [id], onDelete: Cascade)
+  dealItems   DealItem[]
+
+  @@index([productId])
+  @@map("product_variants")
 }
 
 model Order {
@@ -195,14 +210,16 @@ model Deal {
 }
 
 model DealItem {
-  id          Int      @id @default(autoincrement())
-  dealId      Int      @map("deal_id")
-  productId   Int?     @map("product_id")
-  quantity    Int      @default(1)
-  customName  String?  @map("custom_name")
-  customPrice Decimal? @db.Decimal(10, 2) @map("custom_price")
-  deal        Deal     @relation(fields: [dealId], references: [id], onDelete: Cascade)
-  product     Product? @relation(fields: [productId], references: [id])
+  id          Int             @id @default(autoincrement())
+  dealId      Int             @map("deal_id")
+  productId   Int?            @map("product_id")
+  variantId   Int?            @map("variant_id")
+  quantity    Int             @default(1)
+  customName  String?         @map("custom_name")
+  customPrice Decimal?        @db.Decimal(10, 2) @map("custom_price")
+  deal        Deal            @relation(fields: [dealId], references: [id], onDelete: Cascade)
+  product     Product?        @relation(fields: [productId], references: [id])
+  variant     ProductVariant? @relation(fields: [variantId], references: [id])
 
   @@map("deal_items")
 }

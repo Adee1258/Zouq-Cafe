@@ -16,13 +16,14 @@ const DealModal = ({ deal, products, onClose, onSaved }) => {
   const [items, setItems] = useState(
     deal?.items?.length
       ? deal.items.map((i) => ({
-          type:        i.type, // Use the type directly from shapeDeal
+          type:        i.type,
           productId:   i.productId ? String(i.productId) : '',
+          variantId:   i.variantId ? String(i.variantId) : '',
           quantity:    i.quantity || 1,
-          customName:  i.customName || (i.type === 'custom' ? i.productName : ''), // Fallback to productName if customName is missing
-          customPrice: i.customPrice ? String(i.customPrice) : (i.type === 'custom' ? String(i.productPrice) : ''), // Fallback to productPrice for custom items
+          customName:  i.customName || (i.type === 'custom' ? i.productName : ''),
+          customPrice: i.customPrice ? String(i.customPrice) : (i.type === 'custom' ? String(i.productPrice) : ''),
         }))
-      : [{ type: 'menu', productId: '', quantity: 1, customName: '', customPrice: '' }]
+      : [{ type: 'menu', productId: '', variantId: '', quantity: 1, customName: '', customPrice: '' }]
   );
   const [imageFile, setImageFile] = useState(null);
   const [preview,   setPreview]   = useState(deal?.imageUrl || null);
@@ -39,7 +40,7 @@ const DealModal = ({ deal, products, onClose, onSaved }) => {
     setPreview(URL.createObjectURL(file));
   };
 
-  const addItem    = () => setItems((p) => [...p, { type: 'menu', productId: '', quantity: 1, customName: '', customPrice: '' }]);
+  const addItem    = () => setItems((p) => [...p, { type: 'menu', productId: '', variantId: '', quantity: 1, customName: '', customPrice: '' }]);
   const removeItem = (i) => setItems((p) => p.filter((_, idx) => idx !== i));
   const setItem    = (i, field, val) =>
     setItems((p) => p.map((it, idx) => idx === i ? { ...it, [field]: val } : it));
@@ -47,14 +48,18 @@ const DealModal = ({ deal, products, onClose, onSaved }) => {
   // Toggle row between menu picker and custom manual input
   const toggleType = (i, type) =>
     setItems((p) => p.map((it, idx) =>
-      idx === i ? { ...it, type, productId: '', customName: '', customPrice: '' } : it
+      idx === i ? { ...it, type, productId: '', variantId: '', customName: '', customPrice: '' } : it
     ));
 
-  // Live calculated total — menu items use product price, custom items use customPrice
+  // Live calculated total — menu items use variant price if selected, else product price
   const calculatedTotal = items.reduce((sum, it) => {
     if (it.type === 'menu') {
       const p = products.find((pr) => String(pr.id) === String(it.productId));
-      return sum + (p ? Number(p.price) * (Number(it.quantity) || 1) : 0);
+      if (!p) return sum;
+      // If product has variants and one is selected, use variant price
+      const variant = p.variants?.find((v) => String(v.id) === String(it.variantId));
+      const price = variant ? Number(variant.price) : Number(p.price);
+      return sum + price * (Number(it.quantity) || 1);
     } else {
       return sum + (Number(it.customPrice) || 0) * (Number(it.quantity) || 1);
     }
@@ -93,7 +98,11 @@ const DealModal = ({ deal, products, onClose, onSaved }) => {
       const validItems = items
         .filter((it) => it.type === 'menu' ? it.productId : it.customName.trim())
         .map((it) => it.type === 'menu'
-          ? { productId: Number(it.productId), quantity: Number(it.quantity) || 1 }
+          ? {
+              productId: Number(it.productId),
+              variantId: it.variantId ? Number(it.variantId) : null,
+              quantity:  Number(it.quantity) || 1,
+            }
           : { customName: it.customName.trim(), customPrice: Number(it.customPrice) || 0, quantity: Number(it.quantity) || 1 }
         );
       fd.append('items', JSON.stringify(validItems));
@@ -205,8 +214,10 @@ const DealModal = ({ deal, products, onClose, onSaved }) => {
                   const selProd = item.type === 'menu'
                     ? products.find((p) => String(p.id) === String(item.productId))
                     : null;
+                  const selVariant = selProd?.variants?.find((v) => String(v.id) === String(item.variantId));
+                  const effectivePrice = selVariant ? Number(selVariant.price) : (selProd ? Number(selProd.price) : 0);
                   const rowTotal = item.type === 'menu'
-                    ? (selProd ? Number(selProd.price) * item.quantity : 0)
+                    ? effectivePrice * item.quantity
                     : (Number(item.customPrice) || 0) * item.quantity;
 
                   return (
@@ -249,19 +260,44 @@ const DealModal = ({ deal, products, onClose, onSaved }) => {
 
                         {item.type === 'menu' ? (
                           /* Menu picker dropdown */
-                          <select
-                            value={item.productId}
-                            onChange={(e) => setItem(i, 'productId', e.target.value)}
-                            style={{ minHeight: 'unset' }}
-                            className="flex-1 rounded-lg border border-gray-200 px-2 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-orange-400"
-                          >
-                            <option value="">Select product...</option>
-                            {products.map((p) => (
-                              <option key={p.id} value={p.id}>
-                                {p.name} — Rs. {Number(p.price).toLocaleString()}
-                              </option>
-                            ))}
-                          </select>
+                          <div className="flex-1 flex flex-col gap-1.5">
+                            <select
+                              value={item.productId}
+                              onChange={(e) => {
+                                setItem(i, 'productId', e.target.value);
+                                setItem(i, 'variantId', ''); // reset variant when product changes
+                              }}
+                              style={{ minHeight: 'unset' }}
+                              className="flex-1 rounded-lg border border-gray-200 px-2 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-orange-400"
+                            >
+                              <option value="">Select product...</option>
+                              {products.map((p) => (
+                                <option key={p.id} value={p.id}>
+                                  {p.name}{p.variants?.length > 0 ? ' (sizes available)' : ` — Rs. ${Number(p.price).toLocaleString()}`}
+                                </option>
+                              ))}
+                            </select>
+                            {/* Variant dropdown — only show if selected product has variants */}
+                            {(() => {
+                              const selProd = products.find((p) => String(p.id) === String(item.productId));
+                              if (!selProd?.variants?.length) return null;
+                              return (
+                                <select
+                                  value={item.variantId}
+                                  onChange={(e) => setItem(i, 'variantId', e.target.value)}
+                                  style={{ minHeight: 'unset' }}
+                                  className="rounded-lg border border-orange-200 px-2 py-1.5 text-xs bg-orange-50 text-orange-700 font-semibold focus:outline-none focus:ring-2 focus:ring-orange-400"
+                                >
+                                  <option value="">Select size...</option>
+                                  {selProd.variants.map((v) => (
+                                    <option key={v.id} value={v.id}>
+                                      {v.name} — Rs. {Number(v.price).toLocaleString()}
+                                    </option>
+                                  ))}
+                                </select>
+                              );
+                            })()}
+                          </div>
                         ) : (
                           /* Custom manual inputs */
                           <div className="flex-1 flex gap-1.5">
@@ -504,7 +540,12 @@ const AdminDealsPage = () => {
                               ? <img src={item.productImageUrl} alt="" className="w-full h-full object-cover" />
                               : <span className="flex items-center justify-center h-full text-[10px]">🍽️</span>}
                           </div>
-                          <span className="flex-1 truncate">{item.productName}</span>
+                          <span className="flex-1 truncate">
+                            {item.productName}
+                            {item.variantName && (
+                              <span className="ml-1 text-orange-500 font-semibold">({item.variantName})</span>
+                            )}
+                          </span>
                           <span className="text-gray-400">×{item.quantity}</span>
                         </div>
                       ))}

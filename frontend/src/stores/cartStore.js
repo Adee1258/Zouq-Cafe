@@ -14,12 +14,15 @@ const useCartStore = create((set, get) => ({
   items: loadCart(),
 
   // Add single product item or increment quantity
+  // Supports variants: same product + different variant = different cart line
   addItem: (product) => {
     const items = get().items;
-    const existing = items.find((i) => i.id === product.id && !i.isDeal);
+    // Cart key: productId + variantId (if any) so each size is a separate line
+    const cartId = product.variantId ? `${product.id}-v${product.variantId}` : product.id;
+    const existing = items.find((i) => i.id === cartId && !i.isDeal);
     const updated = existing
-      ? items.map((i) => i.id === product.id && !i.isDeal ? { ...i, quantity: i.quantity + 1 } : i)
-      : [...items, { ...product, quantity: 1, isDeal: false }];
+      ? items.map((i) => i.id === cartId && !i.isDeal ? { ...i, quantity: i.quantity + 1 } : i)
+      : [...items, { ...product, id: cartId, productId: product.id, quantity: 1, isDeal: false }];
     saveCart(updated);
     set({ items: updated });
   },

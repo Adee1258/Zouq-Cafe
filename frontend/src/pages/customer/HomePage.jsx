@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { ChevronRight, Search, Star, SlidersHorizontal, X, Flame } from 'lucide-react';
+import { ChevronRight, Search, Star, SlidersHorizontal, X, Flame, Plus, Minus } from 'lucide-react';
 import api from '../../lib/api';
 import Spinner from '../../components/ui/Spinner';
 import ProductCard from '../../components/ui/ProductCard';
@@ -21,6 +21,8 @@ const HomePage = () => {
   const { categories, isLoading: loading, fetchData } = useDataStore();
   const addItem = useCartStore((s) => s.addItem);
   const addDeal = useCartStore((s) => s.addDeal);
+  const removeItem  = useCartStore((s) => s.removeItem);
+  const cartItems   = useCartStore((s) => s.items);
 
   const [deals,            setDeals]            = useState([]);
   const [featuredProducts, setFeaturedProducts] = useState([]);
@@ -340,10 +342,14 @@ const HomePage = () => {
               const originalPrice = deal.items?.reduce((s, it) => s + (it.productPrice || it.customPrice || 0) * it.quantity, 0) || 0;
               const pct = originalPrice > 0 ? Math.round((1 - deal.dealPrice / originalPrice) * 100) : 0;
 
-              const addDealToCart = () => {
+              const cartItem = cartItems.find((i) => i.isDeal && i.dealId === deal.id);
+              const qty = cartItem?.quantity || 0;
+
+              const handleAdd = () => {
                 addDeal(deal);
-                toast.success(`${deal.title} added! 🛒`);
+                if (qty === 0) toast.success(`${deal.title} added! 🛒`);
               };
+              const handleRemove = () => removeItem(`deal-${deal.id}`);
 
               return (
                 <div key={deal.id} className="flex-shrink-0 w-64 bg-white rounded-2xl shadow-sm overflow-hidden group hover:shadow-md transition-all duration-300">
@@ -386,13 +392,35 @@ const HomePage = () => {
                           <p className="text-[10px] text-gray-400 line-through">Rs. {originalPrice.toLocaleString()}</p>
                         )}
                       </div>
-                      <button
-                        onClick={addDealToCart}
-                        style={{ minHeight: 'unset', minWidth: 'unset' }}
-                        className="bg-orange-500 hover:bg-orange-600 active:scale-95 text-white text-xs font-bold px-3 py-2 rounded-xl transition-all"
-                      >
-                        Add
-                      </button>
+                      {qty === 0 ? (
+                        <button
+                          onClick={handleAdd}
+                          style={{ minHeight: 'unset', minWidth: 'unset' }}
+                          className="bg-orange-500 hover:bg-orange-600 active:scale-95 text-white text-xs font-bold px-3 py-2 rounded-xl transition-all"
+                        >
+                          Add
+                        </button>
+                      ) : (
+                        <div className="flex items-center gap-1 bg-orange-50 rounded-xl border border-orange-200">
+                          <button
+                            onClick={handleRemove}
+                            style={{ minHeight: 'unset', minWidth: 'unset' }}
+                            className="w-7 h-7 flex items-center justify-center text-orange-500 hover:bg-orange-100 rounded-l-xl transition-colors"
+                            aria-label="Remove one"
+                          >
+                            <Minus size={13} />
+                          </button>
+                          <span className="w-5 text-center text-orange-600 font-extrabold text-sm">{qty}</span>
+                          <button
+                            onClick={handleAdd}
+                            style={{ minHeight: 'unset', minWidth: 'unset' }}
+                            className="w-7 h-7 flex items-center justify-center text-orange-500 hover:bg-orange-100 rounded-r-xl transition-colors"
+                            aria-label="Add one more"
+                          >
+                            <Plus size={13} />
+                          </button>
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>

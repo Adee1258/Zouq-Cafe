@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { ShoppingCart, Flame, Tag, Search, X, Heart } from 'lucide-react';
+import { ShoppingCart, Flame, Tag, Search, X, Heart, Plus, Minus } from 'lucide-react';
 import toast from 'react-hot-toast';
 import api from '../../lib/api';
 import Spinner from '../../components/ui/Spinner';
@@ -10,17 +10,27 @@ import useFavoritesStore from '../../stores/favoritesStore';
 // ── Deal Card ─────────────────────────────────────────────────────────────────
 const DealCard = ({ deal }) => {
   const addDeal        = useCartStore((s) => s.addDeal);
+  const removeItem     = useCartStore((s) => s.removeItem);
+  const cartItems      = useCartStore((s) => s.items);
   const toggleFavorite = useFavoritesStore((s) => s.toggleFavorite);
   const isFavorite     = useFavoritesStore((s) => s.isFavorite);
   const fav = isFavorite(deal.id, 'deal');
+
+  // find this deal in cart — id is always `deal-${deal.id}`
+  const cartItem = cartItems.find((i) => i.isDeal && i.dealId === deal.id);
+  const qty = cartItem?.quantity || 0;
 
   const originalPrice = deal.items?.reduce((s, it) => s + (it.productPrice || it.customPrice || 0) * it.quantity, 0) || 0;
   const savings = originalPrice - deal.dealPrice;
   const pct = originalPrice > 0 ? Math.round((savings / originalPrice) * 100) : 0;
 
-  const addDealToCart = () => {
+  const handleAdd = () => {
     addDeal(deal);
-    toast.success(`${deal.title} added to cart! 🛒`);
+    if (qty === 0) toast.success(`${deal.title} added to cart! 🛒`);
+  };
+
+  const handleRemove = () => {
+    removeItem(`deal-${deal.id}`);
   };
 
   const handleFav = () => {
@@ -116,13 +126,37 @@ const DealCard = ({ deal }) => {
           )}
         </div>
 
-        {/* Add to cart */}
-        <button
-          onClick={addDealToCart}
-          className="w-full flex items-center justify-center gap-2 bg-orange-500 hover:bg-orange-600 active:scale-95 text-white font-bold py-3 rounded-2xl text-sm transition-all shadow-sm shadow-orange-200"
-        >
-          <ShoppingCart size={16} /> Add to Cart
-        </button>
+        {/* Add to cart / qty stepper */}
+        {qty === 0 ? (
+          <button
+            onClick={handleAdd}
+            className="w-full flex items-center justify-center gap-2 bg-orange-500 hover:bg-orange-600 active:scale-95 text-white font-bold py-3 rounded-2xl text-sm transition-all shadow-sm shadow-orange-200"
+          >
+            <ShoppingCart size={16} /> Add to Cart
+          </button>
+        ) : (
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center gap-1 bg-orange-50 rounded-2xl border border-orange-200 flex-1">
+              <button
+                onClick={handleRemove}
+                style={{ minHeight: 'unset', minWidth: 'unset' }}
+                className="p-3 text-orange-500 hover:bg-orange-100 rounded-l-2xl transition-colors flex items-center justify-center"
+                aria-label="Remove one"
+              >
+                <Minus size={15} />
+              </button>
+              <span className="flex-1 text-center text-orange-600 font-extrabold text-base">{qty}</span>
+              <button
+                onClick={handleAdd}
+                style={{ minHeight: 'unset', minWidth: 'unset' }}
+                className="p-3 text-orange-500 hover:bg-orange-100 rounded-r-2xl transition-colors flex items-center justify-center"
+                aria-label="Add one more"
+              >
+                <Plus size={15} />
+              </button>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

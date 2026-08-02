@@ -5,64 +5,64 @@
   xmlns:image="http://www.google.com/schemas/sitemap-image/1.1"
 >
 
-  <!-- Homepage — highest priority -->
+  <!-- Homepage -->
   <url>
-    <loc>https://zouqcafe.com/</loc>
-    <lastmod>2025-01-01</lastmod>
+    <loc>https://www.zouqcafe.online/</loc>
+    <lastmod>2025-08-02</lastmod>
     <changefreq>daily</changefreq>
     <priority>1.0</priority>
-    <xhtml:link rel="alternate" hreflang="en" href="https://zouqcafe.com/" />
     <image:image>
-      <image:loc>https://zouqcafe.com/og-image.jpg</image:loc>
-      <image:title>Zouq Cafe – Best Restaurant in Buch Villas Multan</image:title>
-      <image:caption>Fresh BBQ, burgers and drinks at Zouq Cafe, Buch Villas Multan</image:caption>
-      <image:geo_location>Buch Villas, Multan, Pakistan</image:geo_location>
+      <image:loc>https://www.zouqcafe.online/og-image.jpg</image:loc>
+      <image:title>Zouq Cafe – Best BBQ Restaurant in Buch Villas Multan</image:title>
+      <image:caption>Fresh tikka, seekh kabab and BBQ at Zouq Cafe, Manik Block Buch Villas Multan</image:caption>
+      <image:geo_location>Manik Block, Buch Executive Villas, Bosan Road, Multan, Pakistan</image:geo_location>
     </image:image>
   </url>
 
-  <!-- Menu page -->
+  <!-- Menu -->
   <url>
-    <loc>https://zouqcafe.com/menu</loc>
-    <lastmod>2025-01-01</lastmod>
+    <loc>https://www.zouqcafe.online/menu</loc>
+    <lastmod>2025-08-02</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.9</priority>
   </url>
 
-  <!-- Hot Deals page -->
+  <!-- Hot Deals -->
   <url>
-    <loc>https://zouqcafe.com/deals</loc>
-    <lastmod>2025-01-01</lastmod>
+    <loc>https://www.zouqcafe.online/deals</loc>
+    <lastmod>2025-08-02</lastmod>
     <changefreq>daily</changefreq>
     <priority>0.8</priority>
   </url>
 
-  <!-- Spin & Win page -->
+  <!-- Spin & Win -->
   <url>
-    <loc>https://zouqcafe.com/spin</loc>
-    <lastmod>2025-01-01</lastmod>
+    <loc>https://www.zouqcafe.online/spin</loc>
+    <lastmod>2025-08-02</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.6</priority>
   </url>
 
-  <!-- Lucky Draw page -->
+  <!-- Lucky Draw -->
   <url>
-    <loc>https://zouqcafe.com/lucky-draw</loc>
-    <lastmod>2025-01-01</lastmod>
+    <loc>https://www.zouqcafe.online/lucky-draw</loc>
+    <lastmod>2025-08-02</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.6</priority>
   </url>
 
-  <!-- Login / Signup (indexable so users can find) -->
+  <!-- Login -->
   <url>
-    <loc>https://zouqcafe.com/login</loc>
-    <lastmod>2025-01-01</lastmod>
+    <loc>https://www.zouqcafe.online/login</loc>
+    <lastmod>2025-08-02</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.3</priority>
   </url>
 
+  <!-- Signup -->
   <url>
-    <loc>https://zouqcafe.com/signup</loc>
-    <lastmod>2025-01-01</lastmod>
+    <loc>https://www.zouqcafe.online/signup</loc>
+    <lastmod>2025-08-02</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.3</priority>
   </url>

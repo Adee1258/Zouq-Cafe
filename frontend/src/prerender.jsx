@@ -81,7 +81,7 @@ const STATIC_CONTENT = {
 <h2>Fast Food</h2>
 <ul><li>Zinger Burger</li><li>Beef Burger</li><li>Shawarma</li><li>Fries</li></ul>
 <h2>Location</h2>
-<p>Manik Block, Buch Executive Villas, Phase 2, Bosan Road, Multan, Punjab, Pakistan. Phone: 0300-8356059. Open 7 days: 11 AM to 11 PM.</p>
+<p>Manik Block, Buch Executive Villas, Phase 2, Bosan Road, Multan, Punjab, Pakistan. Phone: 0300-8356059. Open 7 days: 6 AM to 2 AM.</p>
 </div>`,
 
   '/menu': `<div id="seo-content" style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap" aria-hidden="true">

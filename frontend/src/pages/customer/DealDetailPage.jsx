@@ -5,6 +5,7 @@ import toast from 'react-hot-toast';
 import api from '../../lib/api';
 import useCartStore from '../../stores/cartStore';
 import Spinner from '../../components/ui/Spinner';
+import useSEO from '../../hooks/useSEO';
 
 const DealDetailPage = () => {
   const { id }     = useParams();
@@ -18,6 +19,34 @@ const DealDetailPage = () => {
 
   const cartItem = cartItems.find((i) => i.isDeal && i.dealId === deal?.id);
   const qty      = cartItem?.quantity || 0;
+
+  // Dynamic SEO for the deal
+  useSEO(
+    deal
+      ? {
+          title:       `${deal.title} – Hot Deal at Zouq Cafe Buch Villas Multan`,
+          description: deal.description
+            ? `${deal.description} Order the ${deal.title} deal from Zouq Cafe, Buch Villas Multan at only Rs. ${Number(deal.dealPrice).toLocaleString()}!`
+            : `Get the ${deal.title} deal at Zouq Cafe, Buch Villas Multan for only Rs. ${Number(deal.dealPrice).toLocaleString()}. Order online now!`,
+          keywords:    `${deal.title}, food deals Multan, hot deals Buch Villas, Zouq Cafe deals, combo offer Multan`,
+          canonical:   `https://zouqcafe.com/deals/${id}`,
+          ogImage:     deal.imageUrl || 'https://zouqcafe.com/og-image.jpg',
+          schemaId:    'deal-schema',
+          schema: {
+            '@context':  'https://schema.org',
+            '@type':     'Offer',
+            name:        deal.title,
+            description: deal.description || `${deal.title} at Zouq Cafe, Buch Villas Multan`,
+            price:       String(deal.dealPrice),
+            priceCurrency: 'PKR',
+            url:         `https://zouqcafe.com/deals/${id}`,
+            image:       deal.imageUrl || 'https://zouqcafe.com/og-image.jpg',
+            seller: { '@type': 'Organization', name: 'Zouq Cafe', url: 'https://zouqcafe.com' },
+            availability: 'https://schema.org/InStock',
+          },
+        }
+      : {}
+  );
 
   useEffect(() => {
     api.get(`/deals/${id}`)

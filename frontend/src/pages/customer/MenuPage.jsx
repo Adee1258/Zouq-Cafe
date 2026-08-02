@@ -4,8 +4,16 @@ import { Search, X } from 'lucide-react';
 import ProductCard from '../../components/ui/ProductCard';
 import Spinner from '../../components/ui/Spinner';
 import useDataStore from '../../stores/dataStore';
+import useSEO from '../../hooks/useSEO';
 
 const MenuPage = () => {
+  useSEO({
+    title:       'Menu – Zouq Cafe Buch Villas Multan | BBQ, Burgers, Drinks & More',
+    description: 'Browse the full menu at Zouq Cafe, Buch Villas Multan. Fresh BBQ platters, zinger burgers, shawarma, fries, cold drinks & more. Order online now!',
+    keywords:    'Zouq Cafe menu, food menu Buch Villas, BBQ menu Multan, burger menu Multan, shawarma Multan, drinks menu Multan, fast food menu Buch Villas',
+    canonical:   'https://zouqcafe.com/menu',
+  });
+
   const [searchParams, setSearchParams] = useSearchParams();
   const { categories, products: allProducts, isLoading: loading, fetchData } = useDataStore();
   const [search, setSearch] = useState(searchParams.get('search') || '');

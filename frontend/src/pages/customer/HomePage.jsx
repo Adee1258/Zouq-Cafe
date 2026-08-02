@@ -7,6 +7,7 @@ import ProductCard from '../../components/ui/ProductCard';
 import useDataStore from '../../stores/dataStore';
 import useCartStore from '../../stores/cartStore';
 import toast from 'react-hot-toast';
+import useSEO from '../../hooks/useSEO';
 
 // ── One image per category (Unsplash CDN, free) ───────────────────────────────
 const CATEGORY_IMAGES = {
@@ -18,6 +19,13 @@ const CATEGORY_IMAGES = {
 const CATEGORY_EMOJI = { BBQ: '🥩', 'Fast Food': '🍔', Drinks: '🥤', 'Drink Corner': '🧃' };
 
 const HomePage = () => {
+  useSEO({
+    title:       'Zouq Cafe Buch Villas Multan | Best BBQ, Burgers & Food Delivery',
+    description: 'Order fresh BBQ, burgers, shawarma, fries & drinks from Zouq Cafe in Buch Villas, Multan. Best restaurant with hot deals & fast delivery!',
+    keywords:    'Zouq Cafe, Buch Villas restaurant, Multan food, food delivery Buch Villas, BBQ Multan, burgers Multan, best restaurant Multan, online food order Multan',
+    canonical:   'https://zouqcafe.com/',
+  });
+
   const { categories, isLoading: loading, fetchData } = useDataStore();
   const addItem = useCartStore((s) => s.addItem);
   const addDeal = useCartStore((s) => s.addDeal);

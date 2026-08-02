@@ -1,7 +1,14 @@
 import { Link, useNavigate } from 'react-router-dom';
 import { Home, ArrowLeft, UtensilsCrossed } from 'lucide-react';
+import useSEO from '../../hooks/useSEO';
 
 const NotFoundPage = () => {
+  useSEO({
+    title:       'Page Not Found – Zouq Cafe Buch Villas Multan',
+    description: 'This page does not exist. Head back to Zouq Cafe, the best restaurant in Buch Villas Multan, to order fresh food online.',
+    canonical:   'https://zouqcafe.com/404',
+  });
+
   const navigate = useNavigate();
 
   return (

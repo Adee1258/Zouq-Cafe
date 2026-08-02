@@ -1,0 +1,24 @@
+{
+  "name": "Zouq Cafe – Best Food in Buch Villas Multan",
+  "short_name": "Zouq Cafe",
+  "description": "Order fresh BBQ, burgers, shawarma & drinks from Zouq Cafe in Buch Villas, Multan. Fast delivery, hot deals!",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#E85D04",
+  "orientation": "portrait-primary",
+  "scope": "/",
+  "lang": "en",
+  "categories": ["food", "restaurants", "lifestyle"],
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ],
+  "screenshots": [],
+  "related_applications": [],
+  "prefer_related_applications": false
+}

@@ -6,6 +6,7 @@ import api from '../../lib/api';
 import useAuthStore from '../../stores/authStore';
 import Spinner from '../../components/ui/Spinner';
 import Button from '../../components/ui/Button';
+import useSEO from '../../hooks/useSEO';
 
 // ── Confetti burst on win ─────────────────────────────────────────────────────
 const useConfetti = () => {
@@ -294,6 +295,12 @@ const HistoryItem = ({ item, onUse }) => {
 
 // ── Main Spin Page ────────────────────────────────────────────────────────────
 const SpinPage = () => {
+  useSEO({
+    title:       'Spin & Win – Zouq Cafe Buch Villas Multan | Free Prizes Daily',
+    description: 'Spin the wheel daily at Zouq Cafe, Buch Villas Multan! Win free food, discounts and exciting prizes. Login and spin to win every day!',
+    keywords:    'spin and win Multan, free prizes Zouq Cafe, win food Buch Villas, daily spin Multan restaurant, Zouq Cafe promotions',
+    canonical:   'https://zouqcafe.com/spin',
+  });
   const { user } = useAuthStore();
   const [prizes, setPrizes]     = useState([]);
   const [config, setConfig]     = useState({ dailyLimit: 1, spinsLeft: 1 });

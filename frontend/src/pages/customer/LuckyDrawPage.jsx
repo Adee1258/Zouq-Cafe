@@ -8,6 +8,7 @@ import api from '../../lib/api';
 import useAuthStore from '../../stores/authStore';
 import Spinner from '../../components/ui/Spinner';
 import Button from '../../components/ui/Button';
+import useSEO from '../../hooks/useSEO';
 
 // ── Countdown timer ───────────────────────────────────────────────────────────
 const useCountdown = (targetDate) => {
@@ -71,6 +72,13 @@ const SpendProgress = ({ spent, target, qualified }) => {
 
 // ── Main Page ─────────────────────────────────────────────────────────────────
 const LuckyDrawPage = () => {
+  useSEO({
+    title:       'Lucky Draw – Zouq Cafe Buch Villas Multan | Win Big Prizes',
+    description: 'Join the Zouq Cafe Lucky Draw in Buch Villas Multan! Order food, qualify and win amazing prizes. The more you order, the better your chances!',
+    keywords:    'lucky draw Multan, restaurant lucky draw Buch Villas, win prizes Multan, Zouq Cafe lucky draw, free prize Multan restaurant',
+    canonical:   'https://zouqcafe.com/lucky-draw',
+  });
+
   const { user } = useAuthStore();
   const [data,    setData]    = useState(null);  // { draw, myEntry, myTotalSpent, qualified }
   const [winners, setWinners] = useState([]);

@@ -5,6 +5,7 @@ import api from '../../lib/api';
 import Spinner from '../../components/ui/Spinner';
 import useCartStore from '../../stores/cartStore';
 import useFavoritesStore from '../../stores/favoritesStore';
+import useSEO from '../../hooks/useSEO';
 
 // ── Deal Card ─────────────────────────────────────────────────────────────────
 const DealCard = ({ deal }) => {
@@ -163,6 +164,13 @@ const DealCard = ({ deal }) => {
 
 // ── Main Page ─────────────────────────────────────────────────────────────────
 const HotDealsPage = () => {
+  useSEO({
+    title:       'Hot Deals – Zouq Cafe Buch Villas Multan | Best Food Bundles & Offers',
+    description: 'Grab the best food deals at Zouq Cafe, Buch Villas Multan! BBQ combos, burger bundles, family deals and more at unbeatable prices. Order online now!',
+    keywords:    'food deals Multan, hot deals Buch Villas, restaurant deals Multan, combo offers Multan, BBQ deals Multan, burger deals Multan, Zouq Cafe deals',
+    canonical:   'https://zouqcafe.com/deals',
+  });
+
   const [deals,   setDeals]   = useState([]);
   const [loading, setLoading] = useState(true);
   const [search,  setSearch]  = useState('');

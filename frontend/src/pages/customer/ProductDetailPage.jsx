@@ -6,6 +6,7 @@ import api from '../../lib/api';
 import useCartStore from '../../stores/cartStore';
 import Spinner from '../../components/ui/Spinner';
 import Button from '../../components/ui/Button';
+import useSEO from '../../hooks/useSEO';
 
 const ProductDetailPage = () => {
   const { id }     = useParams();
@@ -13,16 +14,49 @@ const ProductDetailPage = () => {
   const [product,  setProduct]  = useState(null);
   const [loading,  setLoading]  = useState(true);
   const [qty,      setQty]      = useState(1);
-  // selected variant — null means no variants / base product
   const [selectedVariant, setSelectedVariant] = useState(null);
 
   const items       = useCartStore((s) => s.items);
   const addItem     = useCartStore((s) => s.addItem);
   const setQuantity = useCartStore((s) => s.setQuantity);
 
-  // cart key matches what cartStore uses
   const cartId   = selectedVariant ? `${product?.id}-v${selectedVariant.id}` : product?.id;
   const cartItem = items.find((i) => i.id === cartId);
+
+  // Dynamic SEO — updates as product loads
+  useSEO(
+    product
+      ? {
+          title:       `${product.name} – Zouq Cafe Buch Villas Multan | Order Online`,
+          description: product.description
+            ? `${product.description} Order ${product.name} online from Zouq Cafe, Buch Villas Multan. Fast delivery!`
+            : `Order ${product.name} from Zouq Cafe in Buch Villas, Multan. Fresh, delicious and fast delivery!`,
+          keywords:    `${product.name}, ${product.category?.name || ''}, Zouq Cafe Multan, food delivery Buch Villas, order online Multan`,
+          canonical:   `https://zouqcafe.com/product/${id}`,
+          ogImage:     product.imageUrl || 'https://zouqcafe.com/og-image.jpg',
+          ogType:      'product',
+          schemaId:    'product-schema',
+          schema: {
+            '@context':   'https://schema.org',
+            '@type':      'Product',
+            name:         product.name,
+            description:  product.description || `${product.name} at Zouq Cafe, Buch Villas Multan`,
+            image:        product.imageUrl || 'https://zouqcafe.com/og-image.jpg',
+            url:          `https://zouqcafe.com/product/${id}`,
+            brand: { '@type': 'Brand', name: 'Zouq Cafe' },
+            offers: {
+              '@type':          'Offer',
+              priceCurrency:    'PKR',
+              price:            String(product.price || (product.variants?.[0]?.price ?? 0)),
+              availability:     product.isAvailable
+                ? 'https://schema.org/InStock'
+                : 'https://schema.org/OutOfStock',
+              seller: { '@type': 'Organization', name: 'Zouq Cafe' },
+            },
+          },
+        }
+      : {}
+  );
 
   useEffect(() => {
     api.get(`/products/${id}`)

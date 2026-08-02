@@ -67,7 +67,7 @@ const ROUTE_SEO = {
 const STATIC_CONTENT = {
   '/': `<div id="seo-content" style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap" aria-hidden="true">
 <h1>Zouq Cafe — Best BBQ Restaurant in Buch Villas, Multan</h1>
-<p>Zouq Cafe Multan ka sabse behtareen BBQ restaurant hai, Buch Villas mein located. Hum serve karte hain fresh charcoal-grilled tikka, seekh kabab, BBQ platters, chicken BBQ, boti kabab, chapli kabab, burgers, shawarma aur drinks. Online order karo, fast delivery ghar tak.</p>
+<p>Zouq Cafe Multan ka sabse behtareen BBQ restaurant hai, Manik Block, Buch Executive Villas, Bosan Road mein located. Hum serve karte hain fresh charcoal-grilled tikka, seekh kabab, BBQ platters, chicken BBQ, boti kabab, chapli kabab, burgers, shawarma aur drinks. Online order karo, fast delivery ghar tak.</p>
 <h2>Our BBQ Specialties</h2>
 <ul>
 <li>Chicken Tikka — Fresh marinated charcoal-grilled chicken tikka</li>
@@ -81,7 +81,7 @@ const STATIC_CONTENT = {
 <h2>Fast Food</h2>
 <ul><li>Zinger Burger</li><li>Beef Burger</li><li>Shawarma</li><li>Fries</li></ul>
 <h2>Location</h2>
-<p>Buch Villas, Multan, Punjab, Pakistan. Serving Buch Villas, Gulgasht and all of Multan. Open 7 days: 11 AM to 11 PM.</p>
+<p>Manik Block, Buch Executive Villas, Phase 2, Bosan Road, Multan, Punjab, Pakistan. Phone: 0300-8356059. Open 7 days: 11 AM to 11 PM.</p>
 </div>`,
 
   '/menu': `<div id="seo-content" style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap" aria-hidden="true">

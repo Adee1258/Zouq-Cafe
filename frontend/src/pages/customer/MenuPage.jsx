@@ -8,9 +8,9 @@ import useSEO from '../../hooks/useSEO';
 
 const MenuPage = () => {
   useSEO({
-    title:       'Menu – Zouq Cafe Buch Villas Multan | BBQ, Burgers, Drinks & More',
-    description: 'Browse the full menu at Zouq Cafe, Buch Villas Multan. Fresh BBQ platters, zinger burgers, shawarma, fries, cold drinks & more. Order online now!',
-    keywords:    'Zouq Cafe menu, food menu Buch Villas, BBQ menu Multan, burger menu Multan, shawarma Multan, drinks menu Multan, fast food menu Buch Villas',
+    title:       'Menu – Zouq Cafe Buch Villas Multan | BBQ Tikka, Seekh Kabab, Burgers & More',
+    description: 'Full menu at Zouq Cafe Buch Villas Multan — chicken tikka, beef tikka, seekh kabab, BBQ platter, chapli kabab, boti kabab, burgers, shawarma & drinks. Order online!',
+    keywords:    'Zouq Cafe menu, BBQ menu Multan, tikka menu Buch Villas, seekh kabab Multan, BBQ platter Multan, chicken tikka Multan, chapli kabab Multan, burger menu Multan',
     canonical:   'https://zouqcafe.com/menu',
   });
 

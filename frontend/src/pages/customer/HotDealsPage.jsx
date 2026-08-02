@@ -165,9 +165,9 @@ const DealCard = ({ deal }) => {
 // ── Main Page ─────────────────────────────────────────────────────────────────
 const HotDealsPage = () => {
   useSEO({
-    title:       'Hot Deals – Zouq Cafe Buch Villas Multan | Best Food Bundles & Offers',
-    description: 'Grab the best food deals at Zouq Cafe, Buch Villas Multan! BBQ combos, burger bundles, family deals and more at unbeatable prices. Order online now!',
-    keywords:    'food deals Multan, hot deals Buch Villas, restaurant deals Multan, combo offers Multan, BBQ deals Multan, burger deals Multan, Zouq Cafe deals',
+    title:       'Hot Deals – Zouq Cafe Buch Villas Multan | BBQ Combos, Tikka Bundles & Offers',
+    description: 'Best BBQ deals in Buch Villas Multan! Tikka combo, seekh kabab bundle, BBQ family platter at unbeatable prices. Order online from Zouq Cafe now!',
+    keywords:    'BBQ deals Multan, tikka combo Buch Villas, seekh kabab bundle Multan, BBQ bundle Multan, food deals Buch Villas, hot deals Multan restaurant',
     canonical:   'https://zouqcafe.com/deals',
   });
 

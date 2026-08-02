@@ -11,9 +11,9 @@ import { useEffect } from 'react';
 
 // ── Defaults (fallback for every page) ───────────────────────────────────────
 const DEFAULTS = {
-  title:       'Zouq Cafe Buch Villas Multan | Best BBQ, Burgers & Food Delivery',
-  description: "Zouq Cafe \u2013 Multan's top-rated restaurant in Buch Villas. Fresh BBQ, burgers, shawarma, fries, drinks & hot deals. Order online with fast delivery.",
-  keywords:    'Zouq Cafe, Buch Villas restaurant, Multan food, food delivery Multan, BBQ Multan, burgers Multan, fast food Buch Villas, cafe Multan, best restaurant Multan',
+  title:       'Zouq Cafe Buch Villas Multan | BBQ, Tikka, Seekh Kabab & Food Delivery',
+  description: 'Zouq Cafe – Multan ka best BBQ restaurant in Buch Villas. Fresh tikka, seekh kabab, BBQ platter, chicken BBQ, burgers, shawarma & drinks. Online order karo, fast delivery!',
+  keywords:    'BBQ Buch Villas Multan, tikka Multan, seekh kabab Multan, Zouq Cafe BBQ, best BBQ restaurant Multan, chicken tikka Multan, BBQ delivery Buch Villas, food delivery Multan',
   canonical:   'https://zouqcafe.com/',
   ogImage:     'https://zouqcafe.com/og-image.jpg',
   ogType:      'restaurant',

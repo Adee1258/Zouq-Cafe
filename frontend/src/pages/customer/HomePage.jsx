@@ -20,9 +20,9 @@ const CATEGORY_EMOJI = { BBQ: '🥩', 'Fast Food': '🍔', Drinks: '🥤', 'Drin
 
 const HomePage = () => {
   useSEO({
-    title:       'Zouq Cafe Buch Villas Multan | Best BBQ, Burgers & Food Delivery',
-    description: 'Order fresh BBQ, burgers, shawarma, fries & drinks from Zouq Cafe in Buch Villas, Multan. Best restaurant with hot deals & fast delivery!',
-    keywords:    'Zouq Cafe, Buch Villas restaurant, Multan food, food delivery Buch Villas, BBQ Multan, burgers Multan, best restaurant Multan, online food order Multan',
+    title:       'Zouq Cafe Buch Villas Multan | BBQ, Tikka, Seekh Kabab & Food Delivery',
+    description: 'Order fresh BBQ tikka, seekh kabab, BBQ platter, burgers & drinks from Zouq Cafe in Buch Villas, Multan. Best BBQ restaurant with hot deals & fast delivery!',
+    keywords:    'Zouq Cafe, BBQ Buch Villas, tikka Multan, seekh kabab Multan, BBQ delivery Multan, best BBQ restaurant Multan, online food order Multan',
     canonical:   'https://zouqcafe.com/',
   });
 

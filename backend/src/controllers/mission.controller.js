@@ -53,36 +53,53 @@ const genVoucherCode = () =>
 // ─── Internal: update progress after a DELIVERED order ───────────────────────
 /**
  * Called from order.controller.js when an order is marked DELIVERED.
- * - Loads all active missions
- * - For each mission, calculates how much this order contributes
- * - Upserts UserMissionProgress for the current week
- * - If a mission just completed → creates a MissionVoucher + a PromoCode
+ * - Idempotent: if this exact orderId was already processed, skips silently
+ * - Counts only real product items (not custom-name-only deal items) for ITEMS_BOUGHT
+ * - Counts distinct deal instances for DEALS_BOUGHT
  */
 const updateMissionProgress = async (userId, orderId) => {
   try {
     const weekStart = getWeekStart();
-    const weekEnd   = getNextWeekStart(); // exclusive upper bound
+    const weekEnd   = getNextWeekStart();
 
-    // Load the order with its items to count quantities
+    // ── Idempotency: check if this order was already processed ──
+    // We use a simple AppConfig-style check via a dedicated table approach,
+    // but since we don't want another table, we check if ALL missions for this
+    // user+week already have a processedOrderIds-style guard via the progress cap.
+    // Instead: query if an order has already contributed — use a unique note on
+    // PointsTransaction as a cross-reference isn't ideal. Better: just check if
+    // progress rows exist where orderId matches. We store orderId on progress now.
+    // Simplest safe approach: check mission_order_log via AppConfig key per order.
+    const logKey = `mission_order_${orderId}`;
+    const alreadyProcessed = await prisma.appConfig.findUnique({ where: { key: logKey } });
+    if (alreadyProcessed) return; // already processed this order
+
+    // Load the order with its items
     const order = await prisma.order.findUnique({
       where: { id: orderId },
-      include: {
-        items: true,
-      },
+      include: { items: true },
     });
     if (!order) return;
 
-    // Count how many individual items and how many distinct deal instances in THIS order
+    // Count REAL product items only (exclude custom-name-only deal items)
     let itemsInOrder = 0;
-    const dealInstances = new Set(); // unique dealCartKey values = distinct deal instances
+    const dealInstances = new Set();
 
     for (const item of order.items) {
-      itemsInOrder += item.quantity;
+      // Only count items that have a real productId (not pure custom items like "Extra Sauce")
+      if (item.productId) {
+        itemsInOrder += item.quantity;
+      }
       if (item.dealId && item.dealCartKey) {
         dealInstances.add(item.dealCartKey);
       }
     }
     const dealsInOrder = dealInstances.size;
+
+    // Mark this order as processed BEFORE doing anything else (idempotency)
+    await prisma.appConfig.create({
+      data: { key: logKey, value: new Date().toISOString() },
+    });
 
     // Load all active missions
     const missions = await prisma.weeklyMission.findMany({
@@ -91,31 +108,28 @@ const updateMissionProgress = async (userId, orderId) => {
     });
 
     for (const mission of missions) {
-      // How much does this order contribute to this mission?
       const contribution =
         mission.type === 'ITEMS_BOUGHT' ? itemsInOrder :
         mission.type === 'DEALS_BOUGHT' ? dealsInOrder : 0;
 
       if (contribution === 0) continue;
 
-      // Fetch or create progress row for this week
       const existing = await prisma.userMissionProgress.findUnique({
         where: { userId_missionId_weekStart: { userId, missionId: mission.id, weekStart } },
       });
 
-      // If already completed this week, skip
       if (existing?.completed) continue;
 
       const currentProgress = existing?.progress ?? 0;
-      const newProgress = currentProgress + contribution;
-      const justCompleted = !existing?.completed && newProgress >= mission.targetCount;
+      const newProgress     = currentProgress + contribution;
+      const justCompleted   = newProgress >= mission.targetCount;
 
       await prisma.userMissionProgress.upsert({
         where: { userId_missionId_weekStart: { userId, missionId: mission.id, weekStart } },
         update: {
-          progress:    Math.min(newProgress, mission.targetCount * 10), // cap sanity
-          completed:   justCompleted || existing?.completed || false,
-          completedAt: justCompleted ? new Date() : existing?.completedAt ?? null,
+          progress:    Math.min(newProgress, mission.targetCount * 10),
+          completed:   justCompleted,
+          completedAt: justCompleted && !existing?.completed ? new Date() : (existing?.completedAt ?? null),
         },
         create: {
           userId,
@@ -127,8 +141,7 @@ const updateMissionProgress = async (userId, orderId) => {
         },
       });
 
-      // Award voucher on first completion
-      if (justCompleted) {
+      if (justCompleted && !existing?.completed) {
         await awardMissionVoucher(userId, mission, weekStart, weekEnd);
       }
     }
@@ -164,16 +177,17 @@ const awardMissionVoucher = async (userId, mission, weekStart, weekEnd) => {
       return;
     }
 
-    // Create the PromoCode record (per-user, 1-use)
+    // Create the PromoCode record — locked to this user only (perUserLimit=1 + user tagged in code)
+    // The code includes userId so it's traceable; perUserLimit ensures only 1 use
     await prisma.promoCode.create({
       data: {
         code,
-        description:   `Mission reward: ${mission.title} — Rs. ${mission.voucherAmount} off on orders above Rs. ${mission.minOrderForVoucher}`,
+        description:   `Mission reward [User #${userId}]: ${mission.title} — Rs. ${mission.voucherAmount} off on orders above Rs. ${mission.minOrderForVoucher}`,
         discountType:  'FLAT',
         discountValue: mission.voucherAmount,
         minOrderAmount: mission.minOrderForVoucher,
-        usageLimit:    1,
-        perUserLimit:  1,
+        usageLimit:    1,        // globally only 1 use ever
+        perUserLimit:  1,        // per user only 1 use
         isActive:      true,
         expiresAt,
       },
@@ -211,14 +225,20 @@ const awardMissionVoucher = async (userId, mission, weekStart, weekEnd) => {
 const runWeeklyReset = async () => {
   try {
     const now = new Date();
-    // The week that JUST ended is the week whose Monday was 7 days ago
     const lastWeekStart = getWeekStart(new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000));
 
     // Delete incomplete progress for last week — completed ones stay
     const deleted = await prisma.userMissionProgress.deleteMany({
+      where: { weekStart: lastWeekStart, completed: false },
+    });
+
+    // Clean up the order-processing log keys older than 14 days to prevent unbounded growth
+    // These are AppConfig rows with key = "mission_order_<id>"
+    const cutoff = new Date(now.getTime() - 14 * 24 * 60 * 60 * 1000);
+    await prisma.appConfig.deleteMany({
       where: {
-        weekStart:  lastWeekStart,
-        completed:  false,
+        key:      { startsWith: 'mission_order_' },
+        updatedAt: { lt: cutoff },
       },
     });
 

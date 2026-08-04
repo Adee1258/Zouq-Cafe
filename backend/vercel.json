@@ -23,5 +23,11 @@
       "src": "/(.*)",
       "dest": "api/index.js"
     }
+  ],
+  "crons": [
+    {
+      "path": "/api/missions/cron/weekly-reset",
+      "schedule": "0 0 * * 1"
+    }
   ]
 }

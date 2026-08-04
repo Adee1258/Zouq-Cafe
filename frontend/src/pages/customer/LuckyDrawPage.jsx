@@ -48,7 +48,7 @@ const SpendProgress = ({ spent, target, qualified }) => {
   return (
     <div>
       <div className="flex justify-between items-end mb-2">
-        <span className="text-sm font-semibold text-gray-700">Your Spend</span>
+        <span className="text-sm font-semibold text-gray-700">Best Single Order</span>
         <span className={`text-xs font-bold ${qualified ? 'text-green-600' : 'text-orange-500'}`}>
           Rs. {Math.round(spent).toLocaleString()} / Rs. {Number(target).toLocaleString()}
         </span>
@@ -60,10 +60,10 @@ const SpendProgress = ({ spent, target, qualified }) => {
         />
       </div>
       <div className="flex justify-between mt-1.5">
-        <span className="text-xs text-gray-400">{pct}% complete</span>
+        <span className="text-xs text-gray-400">{pct}% of target</span>
         {!qualified && (
           <span className="text-xs text-orange-500 font-medium">
-            Rs. {Math.max(0, Number(target) - Math.round(spent)).toLocaleString()} more needed
+            Place one order of Rs. {Number(target).toLocaleString()}+ to qualify
           </span>
         )}
       </div>
@@ -114,74 +114,35 @@ const LuckyDrawPage = () => {
   return (
     <div className="max-w-2xl mx-auto px-4 py-8 pb-28">
 
-      {/* ── Hero banner ── */}
-      <div className="relative rounded-3xl overflow-hidden mb-6 shadow-xl">
+      {/* ── Hero banner — clean image only, no overlay text ── */}
+      <div className="rounded-3xl overflow-hidden mb-5 shadow-xl">
         <div className="relative w-full" style={{ aspectRatio: '16/9' }}>
           {draw?.bannerUrl ? (
             <img src={draw.bannerUrl} alt={draw?.title || 'Lucky Draw'}
-              className="w-full h-full object-cover" />
+              className="w-full h-full object-cover block" />
           ) : (
-            <div className="w-full h-full"
+            <div className="w-full h-full flex items-center justify-center"
               style={{ background: 'linear-gradient(135deg, #ea580c 0%, #f59e0b 60%, #f97316 100%)' }}>
-              <div className="absolute inset-0 overflow-hidden opacity-10 select-none">
-                {[
-                  { top:'8%', left:'5%' }, { top:'15%', left:'30%' }, { top:'5%',  left:'60%' },
-                  { top:'30%',left:'82%'}, { top:'55%', left:'10%' }, { top:'65%', left:'50%' },
-                  { top:'75%',left:'75%'}, { top:'45%', left:'40%' }, { top:'80%', left:'20%' },
-                ].map((s, i) => (
-                  <span key={i} className="absolute text-5xl"
-                    style={{ top: s.top, left: s.left, transform: 'rotate(12deg)' }}>🎟️</span>
-                ))}
-              </div>
+              <span className="text-8xl select-none">🎟️</span>
             </div>
           )}
-
-          <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/20 to-transparent" />
-
-          <div className="absolute bottom-0 left-0 right-0 px-5 pb-5 pt-8">
-            {draw && (
-              <span className="inline-flex items-center gap-1.5 bg-green-500 text-white text-xs font-bold px-2.5 py-1 rounded-full mb-2">
+          {/* Live badge only — no title, no progress on image */}
+          {draw && (
+            <div className="absolute top-3 left-3">
+              <span className="inline-flex items-center gap-1.5 bg-green-500 text-white text-xs font-bold px-2.5 py-1 rounded-full shadow">
                 <span className="w-1.5 h-1.5 bg-white rounded-full animate-pulse" />
                 LIVE
               </span>
-            )}
-
-            <h1 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight drop-shadow-lg">
-              {draw?.title || 'Lucky Draw'}
-            </h1>
-
-            {!draw && (
-              <p className="text-white/70 text-sm mt-1">No active draw right now — stay tuned!</p>
-            )}
-
-            {/* Entry count progress on banner */}
-            {draw && (
-              <div className="mt-3">
-                <p className="text-white/60 text-[10px] font-semibold uppercase tracking-widest mb-1.5">
-                  Entries so far
-                </p>
-                <div className="flex items-center gap-3">
-                  <div className="flex-1 h-2 bg-white/20 rounded-full overflow-hidden">
-                    <div
-                      className="h-full bg-white rounded-full transition-all duration-700"
-                      style={{ width: `${Math.min(100, (currentEntries / maxEntries) * 100)}%` }}
-                    />
-                  </div>
-                  <span className="text-white font-extrabold text-sm whitespace-nowrap">
-                    {currentEntries} / {maxEntries}
-                  </span>
-                </div>
-              </div>
-            )}
-          </div>
+            </div>
+          )}
         </div>
       </div>
 
-      {/* ── Description ── */}
-      {draw?.description && (
-        <div className="bg-white rounded-2xl px-5 py-4 shadow-sm mb-5 border-l-4 border-orange-400">
-          <p className="text-sm text-gray-700 leading-relaxed">{draw.description}</p>
-        </div>
+      {/* ── Title below banner ── */}
+      {draw ? (
+        <h1 className="text-2xl font-extrabold text-gray-900 mb-5">{draw.title}</h1>
+      ) : (
+        <h1 className="text-2xl font-extrabold text-gray-900 mb-5">Lucky Draw</h1>
       )}
 
       {/* ── No active draw ── */}
@@ -197,6 +158,13 @@ const LuckyDrawPage = () => {
       {draw && (
         <div className="space-y-5">
 
+          {/* Description */}
+          {draw.description && (
+            <div className="bg-white rounded-2xl px-5 py-4 shadow-sm border-l-4 border-orange-400">
+              <p className="text-sm text-gray-700 leading-relaxed">{draw.description}</p>
+            </div>
+          )}
+
           {/* How to participate */}
           <div className="bg-white rounded-2xl p-5 shadow-sm">
             <h2 className="font-bold text-gray-900 mb-4 flex items-center gap-2">
@@ -204,10 +172,10 @@ const LuckyDrawPage = () => {
             </h2>
             <div className="space-y-3">
               {[
-                { icon: '1️⃣', text: `Order Rs. ${Number(draw.minSpendAmount).toLocaleString()} or more (total delivered orders)` },
-                { icon: '2️⃣', text: 'After your order is Delivered, you are automatically added to the list' },
-                { icon: '3️⃣', text: `When ${maxEntries} unique customers qualify, admin picks one lucky winner` },
-                { icon: '4️⃣', text: 'Ordering multiple times does NOT give you extra entries — one entry per customer' },
+                { icon: '1️⃣', text: `Place a SINGLE order of Rs. ${Number(draw.minSpendAmount).toLocaleString()} or more` },
+                { icon: '2️⃣', text: 'Order must be Delivered — your name is automatically added to the list' },
+                { icon: '3️⃣', text: 'Ordering multiple times does NOT give extra entries — one name per customer' },
+                { icon: '4️⃣', text: `When ${maxEntries} unique customers qualify, admin picks one lucky winner` },
                 { icon: '5️⃣', text: 'Winner must visit the cafe to claim their prize' },
               ].map(({ icon, text }) => (
                 <div key={icon} className="flex items-start gap-3">

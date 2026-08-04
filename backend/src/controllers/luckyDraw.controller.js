@@ -28,37 +28,24 @@ const { success, error } = require('../utils/response');
 // ─── Internal: called from order controller on DELIVERED ─────────────────────
 /**
  * After a DELIVERED order, check every active draw.
- * If user's total spend (all delivered orders ever) >= minSpendAmount,
- * they get ONE entry (upsert — ordering multiple times won't add more entries).
+ * Qualification rule: THIS SINGLE ORDER's amount >= minSpendAmount.
+ * Cumulative spend does NOT count — user must place one order worth >= minSpendAmount.
+ * One entry per user per draw — ordering multiple times won't add more entries.
  */
 const checkAndEnterDraw = async (userId, deliveredOrderTotal) => {
   try {
-    // Find all active draws that haven't been drawn yet
     const activeDraws = await prisma.luckyDraw.findMany({
-      where: {
-        isActive: true,
-        drawnAt:  null,
-      },
+      where: { isActive: true, drawnAt: null },
     });
 
     for (const draw of activeDraws) {
-      // Sum ALL delivered orders for this user (no date range — lifetime spend)
-      const agg = await prisma.order.aggregate({
-        where: {
-          userId,
-          status: 'DELIVERED',
-        },
-        _sum: { totalAmount: true },
-      });
-
-      const totalSpent = Number(agg._sum.totalAmount || 0);
-
-      if (totalSpent >= Number(draw.minSpendAmount)) {
-        // Upsert — one entry per user per draw, update running spend total
+      // Only THIS order's amount is checked — not cumulative
+      if (deliveredOrderTotal >= Number(draw.minSpendAmount)) {
+        // Upsert — one entry per user per draw (duplicate orders ignored)
         await prisma.luckyDrawEntry.upsert({
           where:  { drawId_userId: { drawId: draw.id, userId } },
-          update: { totalSpent },
-          create: { drawId: draw.id, userId, totalSpent },
+          update: { totalSpent: deliveredOrderTotal },
+          create: { drawId: draw.id, userId, totalSpent: deliveredOrderTotal },
         });
       }
     }
@@ -235,11 +222,13 @@ const getActiveDraw = async (req, res) => {
     let myTotalSpent = 0;
 
     if (req.user) {
-      const agg = await prisma.order.aggregate({
-        where: { userId: req.user.id, status: 'DELIVERED' },
-        _sum:  { totalAmount: true },
+      // Check user's best (highest) single delivered order
+      const bestOrder = await prisma.order.findFirst({
+        where:   { userId: req.user.id, status: 'DELIVERED' },
+        orderBy: { totalAmount: 'desc' },
+        select:  { totalAmount: true },
       });
-      myTotalSpent = Number(agg._sum.totalAmount || 0);
+      myTotalSpent = Number(bestOrder?.totalAmount || 0);
 
       myEntry = await prisma.luckyDrawEntry.findUnique({
         where: { drawId_userId: { drawId: draw.id, userId: req.user.id } },

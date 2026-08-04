@@ -114,14 +114,14 @@ const LuckyDrawPage = () => {
   return (
     <div className="max-w-2xl mx-auto px-4 py-8 pb-28">
 
-      {/* ── Hero banner — clean image only, no overlay text ── */}
-      <div className="rounded-3xl overflow-hidden mb-5 shadow-xl">
-        <div className="relative w-full" style={{ aspectRatio: '16/9' }}>
+      {/* ── Hero banner — full image, no crop ── */}
+      <div className="rounded-3xl overflow-hidden mb-5 shadow-xl bg-white">
+        <div className="relative w-full">
           {draw?.bannerUrl ? (
             <img src={draw.bannerUrl} alt={draw?.title || 'Lucky Draw'}
-              className="w-full h-full object-cover block" />
+              className="w-full h-auto block" />
           ) : (
-            <div className="w-full h-full flex items-center justify-center"
+            <div className="w-full flex items-center justify-center py-20"
               style={{ background: 'linear-gradient(135deg, #ea580c 0%, #f59e0b 60%, #f97316 100%)' }}>
               <span className="text-8xl select-none">🎟️</span>
             </div>

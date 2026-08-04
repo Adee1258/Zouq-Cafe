@@ -46,17 +46,18 @@ const AdminLoginPage = () => {
             <p className="text-gray-400 text-sm mt-1">ZOCK Cafe Management</p>
           </div>
 
-          <form onSubmit={handleSubmit} noValidate autoComplete="off" className="space-y-4">
+          <form onSubmit={handleSubmit} noValidate className="space-y-4">
             <div className="flex flex-col gap-1.5">
               <label className="text-sm font-medium text-gray-300">Username</label>
               <div className="relative">
                 <User size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" />
                 <input
                   type="text"
-                  placeholder="Enter your username"
+                  placeholder="Enter your username or email"
                   value={form.username}
                   onChange={(e) => setForm({ ...form, username: e.target.value })}
-                  autoComplete="off"
+                  autoComplete="username"
+                  inputMode="email"
                   className={`w-full bg-gray-700 border rounded-xl pl-9 pr-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-orange-400 focus:border-transparent transition-all min-h-[44px] ${errors.username ? 'border-red-500' : 'border-gray-600'}`}
                 />
               </div>
@@ -72,7 +73,7 @@ const AdminLoginPage = () => {
                   placeholder="••••••••"
                   value={form.password}
                   onChange={(e) => setForm({ ...form, password: e.target.value })}
-                  autoComplete="new-password"
+                  autoComplete="current-password"
                   className={`w-full bg-gray-700 border rounded-xl pl-9 pr-11 py-3 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-orange-400 focus:border-transparent transition-all min-h-[44px] ${errors.password ? 'border-red-500' : 'border-gray-600'}`}
                 />
                 <button

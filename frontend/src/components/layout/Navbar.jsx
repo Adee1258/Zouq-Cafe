@@ -46,7 +46,7 @@ const Navbar = ({ onCartOpen }) => {
               className="flex items-center gap-2 text-orange-500 font-bold text-xl"
               onClick={() => setMenuOpen(false)}
             >
-              <span className="text-2xl">🍽️</span>
+              <img src="/favicon.png" alt="ZOCK Cafe" className="w-8 h-8 rounded-lg object-cover" />
               <span>ZOCK Cafe</span>
             </Link>
 

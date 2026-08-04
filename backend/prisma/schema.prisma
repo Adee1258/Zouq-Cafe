@@ -159,6 +159,10 @@ model Payment {
   method        PaymentType
   transactionId String?       @map("transaction_id")
   status        PaymentStatus @default(PENDING)
+  screenshotUrl String?       @map("screenshot_url")   // customer uploads proof
+  adminNote     String?       @map("admin_note")        // admin rejection reason
+  verifiedAt    DateTime?     @map("verified_at")
+  rejectedAt    DateTime?     @map("rejected_at")
   createdAt     DateTime      @default(now()) @map("created_at")
   order         Order         @relation(fields: [orderId], references: [id])
 

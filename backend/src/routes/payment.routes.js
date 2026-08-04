@@ -1,23 +1,28 @@
-const express = require('express');
-const router  = express.Router();
-const { protect } = require('../middleware/auth');
+const express  = require('express');
+const router   = express.Router();
+const { protect, adminOnly } = require('../middleware/auth');
+const { uploadPayment } = require('../config/cloudinary');
 const {
-  initiatePayment,
-  easypaisaCallback,
+  getEasypaisaNumber,
+  updateEasypaisaNumber,
+  uploadScreenshot,
   getPaymentStatus,
-  mockComplete,
+  adminVerify,
+  adminReject,
+  adminGetPending,
 } = require('../controllers/payment.controller');
 
-// Customer initiates payment after placing order
-router.post('/initiate', protect, initiatePayment);
+// ── Public ────────────────────────────────────────────────────────────────────
+router.get('/easypaisa-number', getEasypaisaNumber);
 
-// EasyPaisa server POSTs here after payment (no JWT — verified by hash instead)
-router.post('/easypaisa/callback', easypaisaCallback);
+// ── Customer ──────────────────────────────────────────────────────────────────
+router.post('/screenshot/:orderId', protect, uploadPayment.single('screenshot'), uploadScreenshot);
+router.get('/status/:orderId',      protect, getPaymentStatus);
 
-// Frontend polls this to check if payment completed
-router.get('/status/:orderId', protect, getPaymentStatus);
-
-// Dev only — simulate successful payment without real gateway
-router.post('/mock-complete', protect, mockComplete);
+// ── Admin ─────────────────────────────────────────────────────────────────────
+router.get  ('/admin/pending',              protect, adminOnly, adminGetPending);
+router.post ('/admin/verify/:orderId',      protect, adminOnly, adminVerify);
+router.post ('/admin/reject/:orderId',      protect, adminOnly, adminReject);
+router.patch('/admin/easypaisa-number',     protect, adminOnly, updateEasypaisaNumber);
 
 module.exports = router;

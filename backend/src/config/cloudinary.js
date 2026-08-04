@@ -7,7 +7,7 @@ const hasCloudinary =
   process.env.CLOUDINARY_CLOUD_NAME &&
   process.env.CLOUDINARY_CLOUD_NAME !== 'your_cloud_name';
 
-let cloudinary, uploadProduct, uploadPrize, uploadCategory;
+let cloudinary, uploadProduct, uploadPrize, uploadCategory, uploadBanner, uploadPayment;
 
 if (hasCloudinary) {
   // ── Cloudinary mode ──────────────────────────────────────────────────────
@@ -34,6 +34,7 @@ if (hasCloudinary) {
   uploadPrize    = multer({ storage: makeStorage('prizes',    400, 400) });
   uploadCategory = multer({ storage: makeStorage('categories', 600, 400) });
   uploadBanner   = multer({ storage: makeStorage('banners',   1280, 720) }); // 16:9
+  uploadPayment  = multer({ storage: makeStorage('payments',  1200, 1600) }); // screenshot
 
 } else {
   // ── Local disk mode (dev fallback) ───────────────────────────────────────
@@ -63,7 +64,8 @@ if (hasCloudinary) {
   uploadPrize    = diskUpload;
   uploadCategory = diskUpload;
   uploadBanner   = diskUpload;
+  uploadPayment  = diskUpload;
   cloudinary     = null;
 }
 
-module.exports = { cloudinary, uploadProduct, uploadPrize, uploadCategory, uploadBanner };
+module.exports = { cloudinary, uploadProduct, uploadPrize, uploadCategory, uploadBanner, uploadPayment };

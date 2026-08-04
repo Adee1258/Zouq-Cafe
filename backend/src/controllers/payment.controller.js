@@ -1,258 +1,246 @@
 /**
- * Payment Controller — EasyPaisa Hosted Checkout (EasyPay)
+ * Payment Controller — Manual EasyPaisa Screenshot Verification
  *
  * Flow:
- *  1. Customer selects "Online Payment" → POST /api/payments/initiate
- *  2. Backend generates hash → returns EasyPaisa checkout URL
- *  3. Customer redirects to EasyPaisa, completes payment
- *  4. EasyPaisa POSTs callback → POST /api/payments/easypaisa/callback
- *  5. Backend verifies hash → marks order APPROVED
+ *  1. Customer places order with paymentType=ONLINE
+ *  2. System shows EasyPaisa number (from AppConfig)
+ *  3. Customer sends money to that number, then uploads screenshot
+ *  4. Admin sees screenshot in order detail, clicks Verify or Reject
+ *  5. On Verify → payment COMPLETED, order APPROVED
+ *  6. On Reject → payment FAILED, admin can add note
  *
- * Sandbox portal: https://easypaystg.easypaisa.com.pk
- * Live portal:    https://easypay.easypaisa.com.pk
- *
- * To get credentials: apply at https://easypaisa.com.pk/online-payment-gateway/
+ * Endpoints:
+ *  GET  /api/payments/easypaisa-number          — public: get the configured number
+ *  POST /api/payments/screenshot/:orderId       — customer: upload screenshot
+ *  GET  /api/payments/status/:orderId           — customer: poll payment status
+ *  POST /api/payments/admin/verify/:orderId     — admin: verify payment
+ *  POST /api/payments/admin/reject/:orderId     — admin: reject payment
+ *  GET  /api/payments/admin/pending             — admin: list pending online payments
+ *  PATCH /api/payments/admin/easypaisa-number   — admin: update EasyPaisa number
  */
 
-const crypto  = require('crypto');
-const prisma  = require('../config/prisma');
+const prisma   = require('../config/prisma');
 const { success, error } = require('../utils/response');
+const { getIO } = require('../config/socket');
+const cloudinary = require('../config/cloudinary');
 
-// ─── Config ───────────────────────────────────────────────────────────────────
-const STORE_ID   = process.env.EASYPAISA_STORE_ID;
-const HASH_KEY   = process.env.EASYPAISA_HASH_KEY;
-const EP_ENV     = process.env.EASYPAISA_ENV || 'sandbox';
+const EP_NUMBER_KEY = 'easypaisa_number';
+const EP_NAME_KEY   = 'easypaisa_account_name';
 
-// EasyPaisa gateway URLs
-const GATEWAY_URL = EP_ENV === 'production'
-  ? 'https://easypay.easypaisa.com.pk/tpg/'
-  : 'https://easypaystg.easypaisa.com.pk/tpg/';
-
-// ─── Helper: Generate EasyPaisa HMAC-SHA256 hash ─────────────────────────────
-/**
- * EasyPaisa requires a hash of specific params in a fixed order,
- * joined by '&' and signed with HMAC-SHA256 using the Hash Key.
- *
- * Required param order (from EasyPaisa docs):
- * amount & expiryDate & merchantOrderId & orderDesc & postBackURL &
- * storeId & tansactionType & tokenExpiry
- */
-const generateHash = (params) => {
-  // Sort keys alphabetically as required by EasyPaisa
-  const sortedKeys = Object.keys(params).sort();
-  const hashString = sortedKeys.map((k) => params[k]).join('&');
-  return crypto
-    .createHmac('sha256', HASH_KEY)
-    .update(hashString)
-    .digest('hex')
-    .toUpperCase();
+// ─── GET /api/payments/easypaisa-number ──────────────────────────────────────
+const getEasypaisaNumber = async (req, res) => {
+  try {
+    const [numRow, nameRow] = await Promise.all([
+      prisma.appConfig.findUnique({ where: { key: EP_NUMBER_KEY } }),
+      prisma.appConfig.findUnique({ where: { key: EP_NAME_KEY } }),
+    ]);
+    return success(res, {
+      number:      numRow?.value  || null,
+      accountName: nameRow?.value || 'ZOCK Cafe',
+    });
+  } catch (err) {
+    console.error('[getEasypaisaNumber]', err);
+    return error(res, 'Failed to fetch EasyPaisa number.', 500);
+  }
 };
 
-// ─── POST /api/payments/initiate ─────────────────────────────────────────────
-const initiatePayment = async (req, res) => {
+// ─── PATCH /api/payments/admin/easypaisa-number ───────────────────────────────
+const updateEasypaisaNumber = async (req, res) => {
   try {
-    const { orderId } = req.body;
+    const { number, accountName } = req.body;
+    if (!number || !number.trim()) return error(res, 'EasyPaisa number is required.', 400);
 
-    if (!STORE_ID || !HASH_KEY || STORE_ID === 'your_store_id_here') {
-      return error(
-        res,
-        'EasyPaisa credentials not configured. Set EASYPAISA_STORE_ID and EASYPAISA_HASH_KEY in .env',
-        503
-      );
-    }
+    await Promise.all([
+      prisma.appConfig.upsert({
+        where:  { key: EP_NUMBER_KEY },
+        update: { value: number.trim() },
+        create: { key: EP_NUMBER_KEY, value: number.trim() },
+      }),
+      accountName && prisma.appConfig.upsert({
+        where:  { key: EP_NAME_KEY },
+        update: { value: accountName.trim() },
+        create: { key: EP_NAME_KEY, value: accountName.trim() },
+      }),
+    ].filter(Boolean));
 
+    return success(res, {}, 'EasyPaisa number updated.');
+  } catch (err) {
+    console.error('[updateEasypaisaNumber]', err);
+    return error(res, 'Failed to update EasyPaisa number.', 500);
+  }
+};
+
+// ─── POST /api/payments/screenshot/:orderId ───────────────────────────────────
+// Customer uploads payment screenshot after sending money
+const uploadScreenshot = async (req, res) => {
+  try {
+    const orderId = Number(req.params.orderId);
+    const userId  = req.user.id;
+
+    // Verify this order belongs to the user and is ONLINE payment
     const order = await prisma.order.findFirst({
-      where: { id: Number(orderId), userId: req.user.id },
+      where:   { id: orderId, userId },
       include: { payment: true },
     });
+    if (!order)                         return error(res, 'Order not found.', 404);
+    if (order.paymentType !== 'ONLINE') return error(res, 'This order is Cash on Delivery.', 400);
+    if (order.payment?.status === 'COMPLETED')
+      return error(res, 'Payment already verified.', 400);
+    if (!req.file) return error(res, 'Screenshot image is required.', 400);
 
-    if (!order)                                    return error(res, 'Order not found.', 404);
-    if (order.paymentType !== 'ONLINE')            return error(res, 'This order is Cash on Delivery.', 400);
-    if (order.payment?.status === 'COMPLETED')     return error(res, 'Already paid.', 400);
+    const screenshotUrl = req.file.path; // Cloudinary URL
 
-    // EasyPaisa requires amount as string with 2 decimal places
-    const amount        = Number(order.totalAmount).toFixed(2);
-    const merchantOrderId = `ZC-${order.id}-${Date.now()}`;
-
-    // Token expiry — 1 hour from now, format: yyyyMMddHHmmss
-    const expiry = new Date(Date.now() + 60 * 60 * 1000);
-    const pad    = (n) => String(n).padStart(2, '0');
-    const expiryStr = `${expiry.getFullYear()}${pad(expiry.getMonth() + 1)}${pad(expiry.getDate())}${pad(expiry.getHours())}${pad(expiry.getMinutes())}${pad(expiry.getSeconds())}`;
-
-    const postBackURL = process.env.EASYPAISA_CALLBACK_URL ||
-      `${req.protocol}://${req.get('host')}/api/payments/easypaisa/callback`;
-
-    // Params for hash (alphabetical order)
-    const hashParams = {
-      amount,
-      expiryDate:      expiryStr,
-      merchantOrderId,
-      orderDesc:       `ZOCK Cafe Order #${order.id}`,
-      postBackURL,
-      storeId:         STORE_ID,
-      tansactionType:  'InitialRequest',  // note: EasyPaisa typo in their docs
-      tokenExpiry:     expiryStr,
-    };
-
-    const hash = generateHash(hashParams);
-
-    // Save pending payment record
+    // Upsert payment record with screenshot
     await prisma.payment.upsert({
-      where:  { orderId: order.id },
-      update: { transactionId: merchantOrderId, status: 'PENDING' },
+      where:  { orderId },
+      update: { screenshotUrl, status: 'PENDING', rejectedAt: null, adminNote: null },
       create: {
-        orderId:       order.id,
+        orderId,
         method:        'ONLINE',
-        transactionId: merchantOrderId,
         status:        'PENDING',
+        screenshotUrl,
       },
     });
 
-    // Build the redirect URL — customer POSTs a form to this URL
-    // We return all params so frontend can build an auto-submit form
-    return success(res, {
-      gatewayUrl:     GATEWAY_URL,
-      storeId:        STORE_ID,
-      amount,
-      orderDesc:      hashParams.orderDesc,
-      merchantOrderId,
-      expiryDate:     expiryStr,
-      tokenExpiry:    expiryStr,
-      tansactionType: 'InitialRequest',
-      postBackURL,
-      hash,
-      successUrl:     `${process.env.CLIENT_URL}/payment/success`,
-      failureUrl:     `${process.env.CLIENT_URL}/payment/failed`,
-    });
-  } catch (err) {
-    console.error('[initiatePayment]', err);
-    return error(res, 'Failed to initiate payment.', 500);
-  }
-};
-
-// ─── POST /api/payments/easypaisa/callback ───────────────────────────────────
-// EasyPaisa POSTs here after payment attempt (success or failure).
-// IMPORTANT: Verify the hash before trusting the payload.
-const easypaisaCallback = async (req, res) => {
-  try {
-    const {
-      merchantOrderId,
-      storeId,
-      transactionId,   // EasyPaisa's own transaction ID
-      transactionDateTime,
-      paymentMethod,
-      status,          // 'PAID' | 'UNPAID' | 'CANCEL' | 'REFUND'
-      amount,
-      hash: receivedHash,
-    } = req.body;
-
-    // ── Verify hash from EasyPaisa ──
-    const verifyParams = {
-      amount,
-      merchantOrderId,
-      paymentMethod: paymentMethod || '',
-      status,
-      storeId,
-      tansactionType:      'InitialRequest',
-      transactionDateTime: transactionDateTime || '',
-      transactionId:       transactionId || '',
-    };
-    const expectedHash = generateHash(verifyParams);
-
-    if (receivedHash && receivedHash.toUpperCase() !== expectedHash) {
-      console.warn('[easypaisaCallback] Hash mismatch — possible tamper attempt', {
-        received: receivedHash,
-        expected: expectedHash,
+    // Notify admin in real-time
+    try {
+      getIO().to('admin').emit('payment_screenshot_uploaded', {
+        orderId,
+        userId,
+        screenshotUrl,
       });
-      return res.status(400).send('Hash verification failed');
-    }
+    } catch { /* socket not critical */ }
 
-    // Find our internal payment record
-    const payment = await prisma.payment.findFirst({
-      where: { transactionId: merchantOrderId },
-    });
-
-    if (!payment) {
-      console.warn('[easypaisaCallback] Unknown merchantOrderId:', merchantOrderId);
-      return res.status(404).send('Transaction not found');
-    }
-
-    const isPaid = status === 'PAID';
-    const paymentStatus = isPaid ? 'COMPLETED' : 'FAILED';
-
-    await prisma.$transaction([
-      prisma.payment.update({
-        where: { id: payment.id },
-        data:  {
-          status:        paymentStatus,
-          transactionId: transactionId || payment.transactionId, // store EP's txn ID
-        },
-      }),
-      // Auto-approve the order on successful payment
-      ...(isPaid
-        ? [prisma.order.update({
-            where: { id: payment.orderId },
-            data:  { status: 'APPROVED' },
-          })]
-        : []),
-    ]);
-
-    console.log(`[easypaisaCallback] Order #${payment.orderId} → ${paymentStatus}`);
-
-    // EasyPaisa expects HTTP 200 OK
-    return res.status(200).send('OK');
+    return success(res, { screenshotUrl }, 'Screenshot uploaded. Awaiting admin verification.');
   } catch (err) {
-    console.error('[easypaisaCallback]', err);
-    return res.status(500).send('Internal Server Error');
+    console.error('[uploadScreenshot]', err);
+    return error(res, 'Failed to upload screenshot.', 500);
   }
 };
 
-// ─── GET /api/payments/status/:orderId ───────────────────────────────────────
-// Frontend polls this after returning from EasyPaisa to know if payment succeeded
+// ─── GET /api/payments/status/:orderId ────────────────────────────────────────
 const getPaymentStatus = async (req, res) => {
   try {
-    const { orderId } = req.params;
-
+    const orderId = Number(req.params.orderId);
     const payment = await prisma.payment.findFirst({
-      where: { orderId: Number(orderId) },
-      select: { status: true, transactionId: true, updatedAt: true },
+      where:  { orderId },
+      select: { status: true, screenshotUrl: true, adminNote: true, verifiedAt: true, rejectedAt: true },
     });
-
-    if (!payment) return error(res, 'Payment record not found.', 404);
-
-    return success(res, { status: payment.status, transactionId: payment.transactionId });
+    if (!payment) return success(res, { status: 'NOT_FOUND', screenshotUrl: null });
+    return success(res, payment);
   } catch (err) {
     return error(res, 'Failed to fetch payment status.', 500);
   }
 };
 
-// ─── POST /api/payments/mock-complete (dev only) ──────────────────────────────
-const mockComplete = async (req, res) => {
-  if (process.env.NODE_ENV === 'production') {
-    return error(res, 'Not available in production.', 403);
-  }
+// ─── POST /api/payments/admin/verify/:orderId ────────────────────────────────
+// Admin confirms payment received → COMPLETED + order APPROVED
+const adminVerify = async (req, res) => {
   try {
-    const { orderId } = req.body;
-    const order = await prisma.order.findFirst({
-      where: { id: Number(orderId), userId: req.user.id },
-    });
-    if (!order) return error(res, 'Order not found.', 404);
+    const orderId = Number(req.params.orderId);
+
+    const payment = await prisma.payment.findFirst({ where: { orderId } });
+    if (!payment) return error(res, 'Payment record not found.', 404);
+    if (payment.status === 'COMPLETED') return error(res, 'Already verified.', 400);
 
     await prisma.$transaction([
-      prisma.payment.updateMany({
-        where: { orderId: order.id },
-        data:  { status: 'COMPLETED' },
+      prisma.payment.update({
+        where: { id: payment.id },
+        data:  { status: 'COMPLETED', verifiedAt: new Date(), adminNote: null },
       }),
       prisma.order.update({
-        where: { id: order.id },
+        where: { id: orderId },
         data:  { status: 'APPROVED' },
       }),
     ]);
 
-    return success(res, {}, 'Mock payment completed. Order approved.');
+    // Notify customer
+    try {
+      const order = await prisma.order.findUnique({ where: { id: orderId }, select: { userId: true } });
+      if (order) {
+        getIO().to(`user_${order.userId}`).emit('payment_verified', { orderId });
+        getIO().to(`user_${order.userId}`).emit('order_status_updated', { id: orderId, status: 'APPROVED' });
+      }
+    } catch { /* socket not critical */ }
+
+    return success(res, {}, 'Payment verified. Order approved.');
   } catch (err) {
-    return error(res, 'Failed.', 500);
+    console.error('[adminVerify]', err);
+    return error(res, 'Failed to verify payment.', 500);
   }
 };
 
-module.exports = { initiatePayment, easypaisaCallback, getPaymentStatus, mockComplete };
+// ─── POST /api/payments/admin/reject/:orderId ────────────────────────────────
+// Admin rejects payment — order stays PENDING, customer can re-upload
+const adminReject = async (req, res) => {
+  try {
+    const orderId  = Number(req.params.orderId);
+    const { note } = req.body;
+
+    const payment = await prisma.payment.findFirst({ where: { orderId } });
+    if (!payment) return error(res, 'Payment record not found.', 404);
+
+    await prisma.payment.update({
+      where: { id: payment.id },
+      data:  {
+        status:       'FAILED',
+        rejectedAt:   new Date(),
+        adminNote:    note?.trim() || 'Payment could not be verified. Please re-upload.',
+        screenshotUrl: null, // clear so customer can re-upload
+      },
+    });
+
+    // Notify customer
+    try {
+      const order = await prisma.order.findUnique({ where: { id: orderId }, select: { userId: true } });
+      if (order) {
+        getIO().to(`user_${order.userId}`).emit('payment_rejected', {
+          orderId,
+          note: note?.trim() || 'Payment could not be verified. Please re-upload.',
+        });
+      }
+    } catch { /* socket not critical */ }
+
+    return success(res, {}, 'Payment rejected.');
+  } catch (err) {
+    console.error('[adminReject]', err);
+    return error(res, 'Failed to reject payment.', 500);
+  }
+};
+
+// ─── GET /api/payments/admin/pending ─────────────────────────────────────────
+// Admin: list all orders with pending online payments (screenshot uploaded, not yet verified)
+const adminGetPending = async (req, res) => {
+  try {
+    const payments = await prisma.payment.findMany({
+      where: {
+        method: 'ONLINE',
+        status: 'PENDING',
+        screenshotUrl: { not: null },
+      },
+      orderBy: { createdAt: 'desc' },
+      include: {
+        order: {
+          select: {
+            id: true, totalAmount: true, status: true, createdAt: true,
+            user: { select: { id: true, name: true, phone: true, email: true } },
+          },
+        },
+      },
+    });
+    return success(res, { payments });
+  } catch (err) {
+    console.error('[adminGetPending]', err);
+    return error(res, 'Failed to fetch pending payments.', 500);
+  }
+};
+
+module.exports = {
+  getEasypaisaNumber,
+  updateEasypaisaNumber,
+  uploadScreenshot,
+  getPaymentStatus,
+  adminVerify,
+  adminReject,
+  adminGetPending,
+};

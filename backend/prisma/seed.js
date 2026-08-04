@@ -97,6 +97,19 @@ async function main() {
   });
   console.log('✅ App config: daily_spin_limit = 1');
 
+  // ─── EasyPaisa Payment Number ─────────────────────────────────────────────
+  await prisma.appConfig.upsert({
+    where: { key: 'easypaisa_number' },
+    update: {},
+    create: { key: 'easypaisa_number', value: '03XX-XXXXXXX' },
+  });
+  await prisma.appConfig.upsert({
+    where: { key: 'easypaisa_account_name' },
+    update: {},
+    create: { key: 'easypaisa_account_name', value: 'ZOCK Cafe' },
+  });
+  console.log('✅ App config: easypaisa_number seeded (update via admin panel)');
+
   // ─── Weekly Missions ──────────────────────────────────────────────────────────
   const missions = [
     {

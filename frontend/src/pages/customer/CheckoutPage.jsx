@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { MapPin, CreditCard, Banknote, Lock, ArrowLeft, Tag, X, CheckCircle, Loader2, Star, Gift } from 'lucide-react';
+import { MapPin, CreditCard, Banknote, Lock, ArrowLeft, Tag, X, CheckCircle, Loader2, Star, Gift, Phone, Upload, Copy, AlertCircle } from 'lucide-react';
 import toast from 'react-hot-toast';
 import api from '../../lib/api';
 import useCartStore from '../../stores/cartStore';
@@ -22,8 +22,16 @@ const CheckoutPage = () => {
   });
   const [errors,      setErrors]      = useState({});
   const [loading,     setLoading]     = useState(false);
-  const [epData,      setEpData]      = useState(null);
-  const [saveAddress, setSaveAddress] = useState(false); // save address to profile
+  const [saveAddress, setSaveAddress] = useState(false);
+
+  // ── After order placed (ONLINE) ────────────────────────────────────────────
+  const [placedOrder,   setPlacedOrder]   = useState(null);   // order just placed
+  const [epInfo,        setEpInfo]        = useState(null);   // { number, accountName }
+  const [screenshot,    setScreenshot]    = useState(null);   // File object
+  const [screenshotPreview, setScreenshotPreview] = useState(null);
+  const [uploadLoading, setUploadLoading] = useState(false);
+  const [uploaded,      setUploaded]      = useState(false);
+  const screenshotRef = useRef();
 
   // ── Promo state ────────────────────────────────────────────────────────────
   const [promoInput,   setPromoInput]   = useState('');
@@ -43,6 +51,11 @@ const CheckoutPage = () => {
     if (!user) return;
     api.get('/loyalty/balance').then((r) => setLoyaltyBalance(r.data.data)).catch(() => {});
   }, [user]);
+
+  // Fetch EasyPaisa number on mount
+  useEffect(() => {
+    api.get('/payments/easypaisa-number').then((r) => setEpInfo(r.data.data)).catch(() => {});
+  }, []);
 
   // Redirect if cart is empty
   if (items.length === 0) {
@@ -231,18 +244,9 @@ const CheckoutPage = () => {
       }
 
       if (form.paymentType === 'ONLINE') {
-        try {
-          const payRes = await api.post('/payments/initiate', { orderId: order.id });
-          const ep     = payRes.data.data;
-          clearCart();
-          sessionStorage.setItem('ep_pending_order', order.id);
-          setEpData({ ...ep, orderId: order.id });
-          toast('Redirecting to EasyPaisa...', { icon: '💳', duration: 2000 });
-        } catch {
-          toast('Order placed! Complete payment below.', { icon: '⚠️' });
-          clearCart();
-          navigate(`/orders/${order.id}`, { replace: true });
-        }
+        clearCart();
+        setPlacedOrder(order);
+        toast.success('Order placed! Now send payment on EasyPaisa.');
       } else {
         toast.success('Order placed! Pay on delivery 🎉');
         clearCart();
@@ -255,25 +259,164 @@ const CheckoutPage = () => {
     }
   };
 
+  // ── Screenshot upload handler ──────────────────────────────────────────────
+  const handleScreenshotChange = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 5 * 1024 * 1024) { toast.error('Image too large. Max 5MB.'); return; }
+    setScreenshot(file);
+    setScreenshotPreview(URL.createObjectURL(file));
+  };
+
+  const handleUploadScreenshot = async () => {
+    if (!screenshot || !placedOrder) return;
+    setUploadLoading(true);
+    try {
+      const fd = new FormData();
+      fd.append('screenshot', screenshot);
+      await api.post(`/payments/screenshot/${placedOrder.id}`, fd, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+      setUploaded(true);
+      toast.success('Screenshot uploaded! Admin will verify shortly.');
+    } catch (err) {
+      toast.error(err.message || 'Upload failed. Try again.');
+    } finally {
+      setUploadLoading(false);
+    }
+  };
+
+  // ── If ONLINE order just placed → show payment instructions ───────────────
+  if (placedOrder) {
+    return (
+      <div className="max-w-lg mx-auto px-4 py-8">
+        <div className="text-center mb-6">
+          <div className="w-16 h-16 rounded-full bg-green-100 flex items-center justify-center mx-auto mb-3">
+            <CheckCircle size={32} className="text-green-500" />
+          </div>
+          <h1 className="text-2xl font-bold text-gray-900">Order Placed! 🎉</h1>
+          <p className="text-gray-500 text-sm mt-1">Order #{placedOrder.id}</p>
+        </div>
+
+        {/* Step 1: Pay */}
+        <div className="bg-white rounded-2xl p-5 shadow-sm mb-4">
+          <div className="flex items-center gap-2 mb-4">
+            <div className="w-7 h-7 rounded-full bg-orange-500 text-white text-sm font-bold flex items-center justify-center flex-shrink-0">1</div>
+            <h2 className="font-bold text-gray-900">Send Payment on EasyPaisa</h2>
+          </div>
+
+          <div className="bg-green-50 border border-green-200 rounded-xl p-4 mb-3">
+            <p className="text-xs text-green-600 font-semibold mb-1">EasyPaisa Account</p>
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-2xl font-extrabold text-gray-900 tracking-wider">
+                  {epInfo?.number || 'Loading...'}
+                </p>
+                <p className="text-sm text-gray-500 mt-0.5">{epInfo?.accountName || 'ZOCK Cafe'}</p>
+              </div>
+              {epInfo?.number && (
+                <button
+                  onClick={() => {
+                    navigator.clipboard.writeText(epInfo.number);
+                    toast.success('Number copied!');
+                  }}
+                  className="p-2.5 rounded-xl bg-green-100 hover:bg-green-200 transition-colors"
+                >
+                  <Copy size={18} className="text-green-600" />
+                </button>
+              )}
+            </div>
+          </div>
+
+          <div className="bg-orange-50 border border-orange-200 rounded-xl px-4 py-3 flex items-center gap-2">
+            <AlertCircle size={16} className="text-orange-500 flex-shrink-0" />
+            <div>
+              <p className="text-sm font-bold text-orange-700">Amount to Send</p>
+              <p className="text-xl font-extrabold text-orange-600">Rs. {Number(placedOrder.totalAmount).toLocaleString()}</p>
+            </div>
+          </div>
+        </div>
+
+        {/* Step 2: Upload screenshot */}
+        <div className="bg-white rounded-2xl p-5 shadow-sm mb-4">
+          <div className="flex items-center gap-2 mb-4">
+            <div className="w-7 h-7 rounded-full bg-orange-500 text-white text-sm font-bold flex items-center justify-center flex-shrink-0">2</div>
+            <h2 className="font-bold text-gray-900">Upload Payment Screenshot</h2>
+          </div>
+
+          {uploaded ? (
+            <div className="bg-green-50 border border-green-200 rounded-xl p-4 text-center">
+              <CheckCircle size={28} className="text-green-500 mx-auto mb-2" />
+              <p className="font-bold text-green-700">Screenshot Uploaded!</p>
+              <p className="text-sm text-gray-500 mt-1">Admin will verify your payment shortly. Your order will be approved once verified.</p>
+              <button
+                onClick={() => navigate(`/orders/${placedOrder.id}`, { replace: true })}
+                className="mt-4 bg-orange-500 text-white font-bold px-6 py-2.5 rounded-xl text-sm hover:bg-orange-600 transition-colors"
+              >
+                Track Order
+              </button>
+            </div>
+          ) : (
+            <>
+              {/* Upload area */}
+              <div
+                onClick={() => screenshotRef.current?.click()}
+                className={`border-2 border-dashed rounded-xl cursor-pointer transition-colors mb-3 ${
+                  screenshotPreview ? 'border-orange-300 bg-orange-50' : 'border-gray-200 hover:border-orange-300 bg-gray-50'
+                }`}
+              >
+                {screenshotPreview ? (
+                  <div className="relative">
+                    <img src={screenshotPreview} alt="Screenshot" className="w-full max-h-64 object-contain rounded-xl" />
+                    <div className="absolute inset-0 bg-black/30 rounded-xl flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity">
+                      <p className="text-white text-sm font-semibold">Click to change</p>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex flex-col items-center justify-center py-8 gap-2 text-gray-400">
+                    <Upload size={28} />
+                    <p className="text-sm font-medium">Tap to upload screenshot</p>
+                    <p className="text-xs">JPG, PNG — Max 5MB</p>
+                  </div>
+                )}
+              </div>
+              <input
+                ref={screenshotRef}
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={handleScreenshotChange}
+              />
+
+              <Button
+                variant="primary"
+                fullWidth
+                onClick={handleUploadScreenshot}
+                disabled={!screenshot}
+                isLoading={uploadLoading}
+              >
+                <Upload size={16} className="mr-2" />
+                Submit Screenshot
+              </Button>
+            </>
+          )}
+        </div>
+
+        {/* Skip for now */}
+        {!uploaded && (
+          <button
+            onClick={() => navigate(`/orders/${placedOrder.id}`, { replace: true })}
+            className="w-full text-center text-sm text-gray-400 hover:text-gray-600 py-2"
+          >
+            Upload later from My Orders →
+          </button>
+        )}
+      </div>
+    );
+  }
+
   return (
     <div className="max-w-2xl mx-auto px-4 py-5">
-      {/* EasyPaisa hidden auto-submit form */}
-      {epData && (
-        <form method="POST" action={epData.gatewayUrl} style={{ display: 'none' }}
-          ref={(el) => { if (el) el.submit(); }}>
-          <input type="hidden" name="storeId"         value={epData.storeId} />
-          <input type="hidden" name="amount"          value={epData.amount} />
-          <input type="hidden" name="postBackURL"     value={epData.postBackURL} />
-          <input type="hidden" name="orderDesc"       value={epData.orderDesc} />
-          <input type="hidden" name="tansactionType"  value="InitialRequest" />
-          <input type="hidden" name="merchantOrderId" value={epData.merchantOrderId} />
-          <input type="hidden" name="expiryDate"      value={epData.expiryDate} />
-          <input type="hidden" name="tokenExpiry"     value={epData.tokenExpiry} />
-          <input type="hidden" name="successUrl"      value={epData.successUrl} />
-          <input type="hidden" name="failureUrl"      value={epData.failureUrl} />
-          <input type="hidden" name="hash"            value={epData.hash} />
-        </form>
-      )}
 
       <button onClick={() => navigate(-1)}
         className="flex items-center gap-2 text-gray-500 hover:text-orange-500 text-sm font-medium mb-5 min-h-[44px]">
@@ -480,9 +623,12 @@ const CheckoutPage = () => {
             ))}
           </div>
           {form.paymentType === 'ONLINE' && (
-            <div className="mt-3 bg-green-50 border border-green-200 rounded-xl px-4 py-3 text-sm text-green-700 flex items-center gap-2">
-              <span className="text-lg">💚</span>
-              <span>After placing order, you'll be redirected to <strong>EasyPaisa</strong> to complete payment securely.</span>
+            <div className="mt-3 bg-green-50 border border-green-200 rounded-xl px-4 py-3 text-sm text-green-700 flex items-start gap-2">
+              <Phone size={16} className="text-green-600 flex-shrink-0 mt-0.5" />
+              <div>
+                <p className="font-bold">EasyPaisa Manual Payment</p>
+                <p className="text-xs mt-0.5">After placing order, you'll see our EasyPaisa number. Send the amount and upload screenshot for verification.</p>
+              </div>
             </div>
           )}
         </div>

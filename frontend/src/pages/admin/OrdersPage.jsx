@@ -98,6 +98,74 @@ export const StatusDropdown = ({ currentStatus, orderId, onUpdated }) => {
   );
 };
 
+// ── Admin Payment Verify/Reject Actions ──────────────────────────────────────
+const AdminPaymentActions = ({ orderId, onUpdated }) => {
+  const [loading,      setLoading]      = useState(null); // 'verify' | 'reject'
+  const [rejectNote,   setRejectNote]   = useState('');
+  const [showReject,   setShowReject]   = useState(false);
+
+  const verify = async () => {
+    setLoading('verify');
+    try {
+      await api.post(`/payments/admin/verify/${orderId}`);
+      const res = await api.get(`/orders/admin/${orderId}`);
+      onUpdated?.(res.data.data.order);
+      toast.success('Payment verified! Order approved.');
+    } catch (err) { toast.error(err.message); }
+    finally { setLoading(null); }
+  };
+
+  const reject = async () => {
+    setLoading('reject');
+    try {
+      await api.post(`/payments/admin/reject/${orderId}`, { note: rejectNote });
+      const res = await api.get(`/orders/admin/${orderId}`);
+      onUpdated?.(res.data.data.order);
+      toast.success('Payment rejected. Customer notified.');
+      setShowReject(false);
+    } catch (err) { toast.error(err.message); }
+    finally { setLoading(null); }
+  };
+
+  if (showReject) {
+    return (
+      <div className="space-y-2">
+        <textarea
+          value={rejectNote}
+          onChange={(e) => setRejectNote(e.target.value)}
+          placeholder="Rejection reason (optional)..."
+          rows={2}
+          className="w-full text-sm border border-red-200 rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-red-300 resize-none"
+        />
+        <div className="flex gap-2">
+          <button onClick={() => setShowReject(false)}
+            className="flex-1 py-2 rounded-xl border border-gray-200 text-gray-600 text-sm font-semibold hover:bg-gray-50">
+            Cancel
+          </button>
+          <button onClick={reject} disabled={loading === 'reject'}
+            className="flex-1 py-2 rounded-xl bg-red-500 text-white text-sm font-bold hover:bg-red-600 disabled:opacity-60">
+            {loading === 'reject' ? 'Rejecting...' : 'Confirm Reject'}
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex gap-2">
+      <button onClick={verify} disabled={!!loading}
+        className="flex-1 py-2.5 rounded-xl bg-green-500 text-white text-sm font-bold hover:bg-green-600 disabled:opacity-60 flex items-center justify-center gap-1.5">
+        {loading === 'verify' ? <RefreshCw size={14} className="animate-spin" /> : '✅'}
+        Verify Payment
+      </button>
+      <button onClick={() => setShowReject(true)} disabled={!!loading}
+        className="flex-1 py-2.5 rounded-xl bg-red-50 text-red-600 border border-red-200 text-sm font-bold hover:bg-red-100 disabled:opacity-60">
+        ❌ Reject
+      </button>
+    </div>
+  );
+};
+
 // ── Order Detail Modal — exported for Dashboard use ──────────────────────────
 export const OrderDetailModal = ({ orderId, onClose, onUpdated, onDeleted }) => {
   const [order,    setOrder]    = useState(null);
@@ -114,6 +182,15 @@ export const OrderDetailModal = ({ orderId, onClose, onUpdated, onDeleted }) => 
   const handleStatusUpdate = (updated) => {
     setOrder(updated);
     onUpdated?.(updated);
+  };
+
+  const handlePaymentUpdate = async () => {
+    // Refetch full order to get updated payment info
+    try {
+      const res = await api.get(`/orders/admin/${orderId}`);
+      setOrder(res.data.data.order);
+      onUpdated?.(res.data.data.order);
+    } catch { /* ignore */ }
   };
 
   const handleDelete = async () => {
@@ -394,18 +471,53 @@ export const OrderDetailModal = ({ orderId, onClose, onUpdated, onDeleted }) => 
             {/* ── Payment Info ── */}
             <div className="px-5 mt-4">
               <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-2.5">Payment</p>
-              <div className="bg-white border border-gray-100 rounded-2xl p-4 shadow-sm flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-semibold text-gray-800">
-                    {order.paymentType === 'COD' ? '💵 Cash on Delivery' : '💳 Online Payment'}
-                  </p>
-                  {order.payment?.transactionId && (
-                    <p className="text-xs text-gray-400 mt-0.5">TXN: {order.payment.transactionId}</p>
-                  )}
+              <div className="bg-white border border-gray-100 rounded-2xl p-4 shadow-sm space-y-3">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-semibold text-gray-800">
+                      {order.paymentType === 'COD' ? '💵 Cash on Delivery' : '💳 Online (EasyPaisa)'}
+                    </p>
+                    {order.payment?.transactionId && (
+                      <p className="text-xs text-gray-400 mt-0.5">TXN: {order.payment.transactionId}</p>
+                    )}
+                  </div>
+                  <Badge variant={order.payment?.status === 'COMPLETED' ? 'success' : order.payment?.status === 'FAILED' ? 'danger' : 'warning'}>
+                    {order.payment?.status || 'PENDING'}
+                  </Badge>
                 </div>
-                <Badge variant={order.payment?.status === 'COMPLETED' ? 'success' : order.payment?.status === 'FAILED' ? 'danger' : 'warning'}>
-                  {order.payment?.status || 'PENDING'}
-                </Badge>
+
+                {/* Screenshot */}
+                {order.paymentType === 'ONLINE' && order.payment?.screenshotUrl && (
+                  <div>
+                    <p className="text-xs font-bold text-gray-400 mb-1.5">Payment Screenshot</p>
+                    <a href={order.payment.screenshotUrl} target="_blank" rel="noreferrer">
+                      <img src={order.payment.screenshotUrl} alt="Payment screenshot"
+                        className="w-full max-h-64 object-contain rounded-xl border border-gray-200 hover:opacity-90 transition-opacity" />
+                    </a>
+                    <p className="text-xs text-gray-400 mt-1">Tap image to view full size</p>
+                  </div>
+                )}
+
+                {/* No screenshot yet */}
+                {order.paymentType === 'ONLINE' && !order.payment?.screenshotUrl && order.payment?.status !== 'COMPLETED' && (
+                  <p className="text-xs text-amber-600 bg-amber-50 px-3 py-2 rounded-xl">
+                    ⏳ Waiting for customer to upload payment screenshot…
+                  </p>
+                )}
+
+                {/* Admin rejection note */}
+                {order.payment?.adminNote && (
+                  <p className="text-xs text-red-600 bg-red-50 px-3 py-2 rounded-xl">
+                    ❌ Rejection note: {order.payment.adminNote}
+                  </p>
+                )}
+
+                {/* Verify / Reject buttons */}
+                {order.paymentType === 'ONLINE' &&
+                 order.payment?.screenshotUrl &&
+                 order.payment?.status === 'PENDING' && (
+                  <AdminPaymentActions orderId={order.id} onUpdated={handlePaymentUpdate} />
+                )}
               </div>
             </div>
           </div>
@@ -454,11 +566,18 @@ const AdminOrdersPage = () => {
       );
     };
 
+    const handleScreenshotUploaded = ({ orderId }) => {
+      toast('📸 Payment screenshot received for Order #' + orderId, { icon: '💳', duration: 5000 });
+      fetchOrders();
+    };
+
     socket.on('new_order', handleNewOrder);
     socket.on('order_status_updated', handleStatusUpdate);
+    socket.on('payment_screenshot_uploaded', handleScreenshotUploaded);
     return () => {
       socket.off('new_order', handleNewOrder);
       socket.off('order_status_updated', handleStatusUpdate);
+      socket.off('payment_screenshot_uploaded', handleScreenshotUploaded);
     };
   }, [fetchOrders, page]);
 

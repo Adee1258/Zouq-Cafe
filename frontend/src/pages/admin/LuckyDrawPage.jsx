@@ -1,8 +1,8 @@
 import { useState, useEffect, useRef } from 'react';
 import {
-  Plus, X, Pencil, Trash2, Trophy, Users, CalendarDays,
-  RefreshCw, ChevronDown, ChevronUp, Sparkles, Clock,
-  BadgeCheck, AlertCircle, Gift, Image as ImageIcon,
+  Plus, X, Pencil, Trash2, Trophy, Users,
+  RefreshCw, ChevronDown, ChevronUp, Sparkles,
+  BadgeCheck, AlertCircle, Gift, Image as ImageIcon, Target,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import api from '../../lib/api';
@@ -11,30 +11,16 @@ import Button from '../../components/ui/Button';
 import Badge from '../../components/ui/Badge';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
-const fmt = (d) =>
-  new Date(d).toLocaleDateString('en-PK', {
-    day: 'numeric', month: 'short', year: 'numeric',
-  });
-
 const fmtFull = (d) =>
   new Date(d).toLocaleString('en-PK', {
     day: 'numeric', month: 'short', year: 'numeric',
     hour: '2-digit', minute: '2-digit',
   });
 
-const toInputDate = (d) => {
-  const dt = new Date(d);
-  const pad = (n) => String(n).padStart(2, '0');
-  return `${dt.getFullYear()}-${pad(dt.getMonth() + 1)}-${pad(dt.getDate())}T${pad(dt.getHours())}:${pad(dt.getMinutes())}`;
-};
-
 const drawStatus = (draw) => {
-  const now = new Date();
-  if (draw.drawnAt)                         return { label: 'Drawn',    variant: 'success' };
-  if (!draw.isActive)                       return { label: 'Inactive', variant: 'default' };
-  if (new Date(draw.endsAt) < now)          return { label: 'Expired',  variant: 'danger'  };
-  if (new Date(draw.startsAt) > now)        return { label: 'Upcoming', variant: 'info'    };
-  return                                           { label: 'Active',   variant: 'primary'  };
+  if (draw.drawnAt)   return { label: 'Drawn',    variant: 'success' };
+  if (!draw.isActive) return { label: 'Inactive', variant: 'default' };
+  return               { label: 'Active',   variant: 'primary'  };
 };
 
 // ── Create / Edit Modal ───────────────────────────────────────────────────────
@@ -44,8 +30,7 @@ const DrawModal = ({ draw, onClose, onSaved }) => {
     title:          draw?.title          || 'Lucky Draw',
     description:    draw?.description    || '',
     minSpendAmount: draw?.minSpendAmount != null ? String(draw.minSpendAmount) : '',
-    startsAt:       draw?.startsAt  ? toInputDate(draw.startsAt)  : '',
-    endsAt:         draw?.endsAt    ? toInputDate(draw.endsAt)    : '',
+    maxEntries:     draw?.maxEntries     != null ? String(draw.maxEntries)     : '100',
     isActive:       draw?.isActive  ?? true,
   });
   const [bannerFile, setBannerFile] = useState(null);
@@ -59,19 +44,17 @@ const DrawModal = ({ draw, onClose, onSaved }) => {
     if (!form.minSpendAmount || Number(form.minSpendAmount) <= 0) {
       toast.error('Minimum spend amount required.'); return;
     }
-    if (!form.endsAt) { toast.error('End date required.'); return; }
-    if (!isEdit && !form.startsAt) { toast.error('Start date required.'); return; }
-
+    if (!form.maxEntries || Number(form.maxEntries) < 1) {
+      toast.error('Draw entries target required.'); return;
+    }
     setLoading(true);
     try {
-      // Use FormData — banner is a file
       const fd = new FormData();
       fd.append('title',          form.title.trim());
       fd.append('description',    form.description.trim());
       fd.append('minSpendAmount', form.minSpendAmount);
-      fd.append('endsAt',         new Date(form.endsAt).toISOString());
+      fd.append('maxEntries',     form.maxEntries);
       fd.append('isActive',       String(form.isActive));
-      if (!isEdit) fd.append('startsAt', new Date(form.startsAt).toISOString());
       if (bannerFile) fd.append('banner', bannerFile);
 
       if (isEdit) {
@@ -96,7 +79,7 @@ const DrawModal = ({ draw, onClose, onSaved }) => {
         </div>
         <form onSubmit={handleSubmit} className="p-5 space-y-4">
 
-          {/* ── 16:9 Banner Upload ── */}
+          {/* Banner Upload */}
           <div>
             <label className="text-sm font-semibold text-gray-700 block mb-1.5">
               Banner Image <span className="text-gray-400 font-normal">(16:9 recommended)</span>
@@ -140,45 +123,36 @@ const DrawModal = ({ draw, onClose, onSaved }) => {
           {/* Description */}
           <div>
             <label className="text-sm font-semibold text-gray-700 block mb-1.5">Description</label>
-            <textarea
-              value={form.description}
-              onChange={set('description')}
-              placeholder="e.g. Spend Rs. 5000 in January and get a chance to win exciting prizes! Winner will be announced on 31st Jan."
-              rows={3}
-              className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400 resize-none"
-            />
+            <textarea value={form.description} onChange={set('description')} rows={3}
+              placeholder="e.g. Spend Rs. 1000 and get a chance to win exciting prizes!"
+              className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400 resize-none" />
           </div>
 
-          {/* Min spend */}
-          <div>
-            <label className="text-sm font-semibold text-gray-700 block mb-1">
-              Minimum Spend to Qualify <span className="text-red-500">*</span>
-            </label>
-            <p className="text-xs text-gray-400 mb-2">Customer ka total (Delivered orders) is amount se zyada ho to entry milegi</p>
-            <div className="relative">
-              <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 font-semibold text-sm">Rs.</span>
-              <input type="number" min="1" value={form.minSpendAmount} onChange={set('minSpendAmount')}
-                placeholder="5000"
-                className="w-full rounded-xl border border-gray-200 pl-12 pr-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400 min-h-[44px]" />
-            </div>
-          </div>
-
-          {/* Dates */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            {!isEdit && (
-              <div>
-                <label className="text-sm font-semibold text-gray-700 block mb-1.5">Start Date <span className="text-red-500">*</span></label>
-                <input type="datetime-local" value={form.startsAt} onChange={set('startsAt')}
-                  className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400 min-h-[44px]" />
-              </div>
-            )}
-            <div className={isEdit ? 'col-span-2' : ''}>
-              <label className="text-sm font-semibold text-gray-700 block mb-1.5">
-                End Date <span className="text-red-500">*</span>
-                {isEdit && <span className="text-orange-500 font-normal ml-1 text-xs">(change to extend duration)</span>}
+          {/* Min spend + Max entries */}
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="text-sm font-semibold text-gray-700 block mb-1">
+                Min. Spend <span className="text-red-500">*</span>
               </label>
-              <input type="datetime-local" value={form.endsAt} onChange={set('endsAt')}
-                className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400 min-h-[44px]" />
+              <p className="text-xs text-gray-400 mb-1.5">Qualify karne ke liye</p>
+              <div className="relative">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 font-semibold text-sm">Rs.</span>
+                <input type="number" min="1" value={form.minSpendAmount} onChange={set('minSpendAmount')}
+                  placeholder="1000"
+                  className="w-full rounded-xl border border-gray-200 pl-10 pr-3 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400 min-h-[44px]" />
+              </div>
+            </div>
+            <div>
+              <label className="text-sm font-semibold text-gray-700 block mb-1">
+                Draw Target <span className="text-red-500">*</span>
+              </label>
+              <p className="text-xs text-gray-400 mb-1.5">Kitne unique users pe draw</p>
+              <div className="relative">
+                <Target size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                <input type="number" min="1" value={form.maxEntries} onChange={set('maxEntries')}
+                  placeholder="100"
+                  className="w-full rounded-xl border border-gray-200 pl-9 pr-3 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400 min-h-[44px]" />
+              </div>
             </div>
           </div>
 
@@ -193,8 +167,7 @@ const DrawModal = ({ draw, onClose, onSaved }) => {
               style={{
                 width: 44, height: 24, borderRadius: 12, cursor: 'pointer',
                 backgroundColor: form.isActive ? '#f97316' : '#d1d5db',
-                position: 'relative', transition: 'background-color 0.2s',
-                flexShrink: 0,
+                position: 'relative', transition: 'background-color 0.2s', flexShrink: 0,
               }}
             >
               <div style={{
@@ -287,14 +260,16 @@ const PickWinnerModal = ({ draw, onClose, onWon }) => {
 };
 
 // ── Draw Card ─────────────────────────────────────────────────────────────────
-const DrawCard = ({ draw, onEdit, onDelete, onPickWinner, onRefresh }) => {
+const DrawCard = ({ draw, onEdit, onDelete, onPickWinner }) => {
   const [expanded, setExpanded] = useState(false);
   const [entries,  setEntries]  = useState(null);
   const [loading,  setLoading]  = useState(false);
-  const status = drawStatus(draw);
-  const now = new Date();
-  const isLive = draw.isActive && !draw.drawnAt && new Date(draw.startsAt) <= now && new Date(draw.endsAt) >= now;
-  const canDraw = isLive && (draw._count?.entries || 0) > 0;
+  const status     = drawStatus(draw);
+  const isLive     = draw.isActive && !draw.drawnAt;
+  const entryCount = draw._count?.entries || 0;
+  const maxEntries = draw.maxEntries || 100;
+  const pct        = Math.min(100, Math.round((entryCount / maxEntries) * 100));
+  const canDraw    = isLive && entryCount > 0;
 
   const loadEntries = async () => {
     if (entries) { setExpanded((v) => !v); return; }
@@ -314,40 +289,31 @@ const DrawCard = ({ draw, onEdit, onDelete, onPickWinner, onRefresh }) => {
 
   return (
     <div className="bg-white rounded-2xl shadow-sm overflow-hidden border border-gray-100">
-      {/* 16:9 Banner */}
+      {/* Banner */}
       {draw.bannerUrl ? (
         <div className="relative w-full" style={{ aspectRatio: '16/9' }}>
-          <img src={draw.bannerUrl} alt={draw.title}
-            className="w-full h-full object-cover" />
-          {/* Status badge overlay */}
-          <div className="absolute top-3 left-3">
-            <Badge variant={status.variant}>{status.label}</Badge>
-          </div>
-          {/* Action buttons overlay */}
+          <img src={draw.bannerUrl} alt={draw.title} className="w-full h-full object-cover" />
+          <div className="absolute top-3 left-3"><Badge variant={status.variant}>{status.label}</Badge></div>
           <div className="absolute top-3 right-3 flex gap-1">
             <button onClick={() => onEdit(draw)}
-              className="p-2 rounded-xl bg-white/90 hover:bg-white text-orange-500 shadow min-h-[36px] min-w-[36px] flex items-center justify-center transition-colors">
+              className="p-2 rounded-xl bg-white/90 hover:bg-white text-orange-500 shadow min-h-[36px] min-w-[36px] flex items-center justify-center">
               <Pencil size={14} />
             </button>
             <button onClick={handleDelete}
-              className="p-2 rounded-xl bg-white/90 hover:bg-white text-red-400 shadow min-h-[36px] min-w-[36px] flex items-center justify-center transition-colors">
+              className="p-2 rounded-xl bg-white/90 hover:bg-white text-red-400 shadow min-h-[36px] min-w-[36px] flex items-center justify-center">
               <Trash2 size={14} />
             </button>
           </div>
-          {/* Gradient overlay at bottom */}
           <div className="absolute bottom-0 left-0 right-0 h-16 bg-gradient-to-t from-black/60 to-transparent" />
           <div className="absolute bottom-3 left-4 right-4">
             <p className="font-extrabold text-white text-lg leading-tight drop-shadow">{draw.title}</p>
-            <p className="text-white/70 text-xs">{fmt(draw.startsAt)} — {fmt(draw.endsAt)}</p>
           </div>
         </div>
       ) : (
-        /* No banner — colored header strip */
         <div className={`h-2 w-full ${isLive ? 'bg-gradient-to-r from-orange-400 to-amber-400' : 'bg-gray-200'}`} />
       )}
 
       <div className="p-5">
-        {/* Header row — only show if no banner (banner shows title inline) */}
         {!draw.bannerUrl && (
           <div className="flex items-start justify-between gap-3 mb-4">
             <div className="flex-1 min-w-0">
@@ -355,29 +321,25 @@ const DrawCard = ({ draw, onEdit, onDelete, onPickWinner, onRefresh }) => {
                 <h3 className="font-extrabold text-gray-900 text-lg">{draw.title}</h3>
                 <Badge variant={status.variant}>{status.label}</Badge>
               </div>
-              <p className="text-xs text-gray-400">{fmt(draw.startsAt)} — {fmt(draw.endsAt)}</p>
             </div>
             <div className="flex gap-1 flex-shrink-0">
               <button onClick={() => onEdit(draw)}
-                className="p-2 rounded-xl hover:bg-orange-50 text-orange-500 min-h-[36px] min-w-[36px] flex items-center justify-center transition-colors">
+                className="p-2 rounded-xl hover:bg-orange-50 text-orange-500 min-h-[36px] min-w-[36px] flex items-center justify-center">
                 <Pencil size={15} />
               </button>
               <button onClick={handleDelete}
-                className="p-2 rounded-xl hover:bg-red-50 text-red-400 min-h-[36px] min-w-[36px] flex items-center justify-center transition-colors">
+                className="p-2 rounded-xl hover:bg-red-50 text-red-400 min-h-[36px] min-w-[36px] flex items-center justify-center">
                 <Trash2 size={15} />
               </button>
             </div>
           </div>
         )}
 
-        {/* Description */}
         {draw.description && (
-          <p className="text-sm text-gray-600 leading-relaxed mb-4 bg-gray-50 rounded-xl px-4 py-3">
-            {draw.description}
-          </p>
+          <p className="text-sm text-gray-600 leading-relaxed mb-4 bg-gray-50 rounded-xl px-4 py-3">{draw.description}</p>
         )}
 
-        {/* Stats row */}
+        {/* Stats */}
         <div className="grid grid-cols-3 gap-3 mb-4">
           <div className="bg-orange-50 rounded-xl p-3 text-center">
             <p className="text-xs text-gray-400 mb-0.5">Min. Spend</p>
@@ -385,7 +347,7 @@ const DrawCard = ({ draw, onEdit, onDelete, onPickWinner, onRefresh }) => {
           </div>
           <div className="bg-blue-50 rounded-xl p-3 text-center">
             <p className="text-xs text-gray-400 mb-0.5">Entries</p>
-            <p className="font-extrabold text-blue-600 text-lg">{draw._count?.entries ?? '—'}</p>
+            <p className="font-extrabold text-blue-600 text-lg">{entryCount} / {maxEntries}</p>
           </div>
           <div className="bg-green-50 rounded-xl p-3 text-center">
             <p className="text-xs text-gray-400 mb-0.5">Winners</p>
@@ -393,7 +355,28 @@ const DrawCard = ({ draw, onEdit, onDelete, onPickWinner, onRefresh }) => {
           </div>
         </div>
 
-        {/* Winner banner */}
+        {/* Entry progress bar */}
+        {isLive && (
+          <div className="mb-4">
+            <div className="flex justify-between text-xs text-gray-500 mb-1.5">
+              <span className="font-medium">Users qualified</span>
+              <span className={`font-bold ${pct >= 100 ? 'text-green-600' : 'text-orange-500'}`}>{pct}%</span>
+            </div>
+            <div className="h-3 bg-gray-100 rounded-full overflow-hidden">
+              <div
+                className={`h-full rounded-full transition-all duration-700 ${pct >= 100 ? 'bg-gradient-to-r from-green-400 to-emerald-500' : 'bg-gradient-to-r from-orange-400 to-amber-400'}`}
+                style={{ width: `${pct}%` }}
+              />
+            </div>
+            {pct >= 100 ? (
+              <p className="text-xs text-green-600 font-semibold mt-1.5">✅ Target reached! Draw karo ab.</p>
+            ) : (
+              <p className="text-xs text-gray-400 mt-1.5">{maxEntries - entryCount} more unique users needed to trigger draw</p>
+            )}
+          </div>
+        )}
+
+        {/* Winner */}
         {draw.winners?.length > 0 && (
           <div className="bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 mb-4 flex items-center gap-3">
             <Trophy size={18} className="text-amber-500 flex-shrink-0" />
@@ -405,7 +388,7 @@ const DrawCard = ({ draw, onEdit, onDelete, onPickWinner, onRefresh }) => {
           </div>
         )}
 
-        {/* Action buttons */}
+        {/* Actions */}
         <div className="flex gap-2 flex-wrap">
           {canDraw && (
             <Button variant="primary" size="sm" onClick={() => onPickWinner(draw)}>
@@ -420,7 +403,6 @@ const DrawCard = ({ draw, onEdit, onDelete, onPickWinner, onRefresh }) => {
         </div>
       </div>
 
-      {/* Entries list */}
       {expanded && entries && (
         <div className="border-t border-gray-100">
           {entries.length === 0 ? (
@@ -480,7 +462,7 @@ const AdminLuckyDrawPage = () => {
     } catch (err) { toast.error(err.message); }
   };
 
-  const activeCount   = draws.filter((d) => d.isActive && !d.drawnAt && new Date(d.endsAt) >= new Date()).length;
+  const activeCount   = draws.filter((d) => d.isActive && !d.drawnAt).length;
   const totalEntries  = draws.reduce((s, d) => s + (d._count?.entries || 0), 0);
   const totalWinners  = draws.reduce((s, d) => s + (d.winners?.length || 0), 0);
 
@@ -540,10 +522,10 @@ const AdminLuckyDrawPage = () => {
         <AlertCircle size={18} className="text-orange-400 flex-shrink-0 mt-0.5" />
         <div className="text-sm text-gray-600 space-y-0.5">
           <p className="font-semibold text-gray-800">Kaise kaam karta hai?</p>
-          <p>1. New draw banao — minimum spend amount aur duration set karo.</p>
-          <p>2. Jab bhi koi customer ka order <strong>Delivered</strong> hota hai, uska total spend check hota hai.</p>
-          <p>3. Agar spend ≥ minimum amount ho to wo automatically list mein add ho jata hai.</p>
-          <p>4. Duration khatam hone pe <strong>"Pick Winner"</strong> pe click karo — random winner pick hoga.</p>
+          <p>1. New draw banao — minimum spend amount aur draw target (e.g. 100 users) set karo.</p>
+          <p>2. Jab bhi koi customer ka order <strong>Delivered</strong> hota hai, us ka name automatically entry list mein add hota hai.</p>
+          <p>3. Ek user dobara order kare to uska name <strong>dobara add nahi hoga</strong> — sirf unique users count hote hain.</p>
+          <p>4. Jab target pura ho jaye to <strong>"Pick Winner"</strong> pe click karo — random winner pick hoga.</p>
         </div>
       </div>
 

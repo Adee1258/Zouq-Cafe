@@ -296,9 +296,8 @@ model LuckyDraw {
   description     String?
   bannerUrl       String?           @map("banner_url")
   minSpendAmount  Decimal           @db.Decimal(10, 2) @map("min_spend_amount")
+  maxEntries      Int               @default(100) @map("max_entries")  // draw triggers at this many unique users
   isActive        Boolean           @default(true) @map("is_active")
-  startsAt        DateTime          @map("starts_at")
-  endsAt          DateTime          @map("ends_at")
   drawnAt         DateTime?         @map("drawn_at")
   createdAt       DateTime          @default(now()) @map("created_at")
   updatedAt       DateTime          @updatedAt @map("updated_at")

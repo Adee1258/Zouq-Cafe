@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import {
-  Trophy, Lock, CheckCircle, Clock, Ticket,
-  ShoppingBag, ChevronRight, Star, Users,
+  Trophy, Lock, CheckCircle, Ticket,
+  ShoppingBag, ChevronRight, Star, Users, Target,
 } from 'lucide-react';
 import api from '../../lib/api';
 import useAuthStore from '../../stores/authStore';
@@ -10,44 +10,45 @@ import Spinner from '../../components/ui/Spinner';
 import Button from '../../components/ui/Button';
 import useSEO from '../../hooks/useSEO';
 
-// ── Countdown timer ───────────────────────────────────────────────────────────
-const useCountdown = (targetDate) => {
-  const calc = () => {
-    const diff = new Date(targetDate) - new Date();
-    if (diff <= 0) return { days: 0, hours: 0, minutes: 0, seconds: 0, done: true };
-    return {
-      days:    Math.floor(diff / 86400000),
-      hours:   Math.floor((diff % 86400000) / 3600000),
-      minutes: Math.floor((diff % 3600000)  / 60000),
-      seconds: Math.floor((diff % 60000)    / 1000),
-      done:    false,
-    };
-  };
-  const [time, setTime] = useState(calc);
-  useEffect(() => {
-    const t = setInterval(() => setTime(calc()), 1000);
-    return () => clearInterval(t);
-  }, [targetDate]);
-  return time;
+// ── Entry Progress Bar ────────────────────────────────────────────────────────
+const EntryProgress = ({ current, max }) => {
+  const pct = Math.min(100, Math.round((current / max) * 100));
+  return (
+    <div>
+      <div className="flex justify-between items-center mb-2">
+        <span className="text-sm font-semibold text-gray-700">Qualified Entries</span>
+        <span className="text-xs font-bold text-orange-500">
+          {current} / {max} users
+        </span>
+      </div>
+      <div className="h-3 bg-gray-100 rounded-full overflow-hidden">
+        <div
+          className="h-full rounded-full transition-all duration-700 bg-gradient-to-r from-orange-400 to-amber-400"
+          style={{ width: `${pct}%` }}
+        />
+      </div>
+      <div className="flex justify-between mt-1.5">
+        <span className="text-xs text-gray-400">{pct}% complete</span>
+        {current < max && (
+          <span className="text-xs text-orange-500 font-medium">
+            {max - current} more users needed
+          </span>
+        )}
+        {current >= max && (
+          <span className="text-xs text-green-600 font-bold">🎯 Draw ready!</span>
+        )}
+      </div>
+    </div>
+  );
 };
 
-// ── Countdown box ─────────────────────────────────────────────────────────────
-const CountdownBox = ({ value, label }) => (
-  <div className="flex flex-col items-center bg-white/20 backdrop-blur-sm rounded-2xl px-3 py-2 min-w-[58px]">
-    <span className="text-2xl font-extrabold text-white leading-none">
-      {String(value).padStart(2, '0')}
-    </span>
-    <span className="text-[10px] text-white/70 font-medium mt-0.5 uppercase tracking-wide">{label}</span>
-  </div>
-);
-
-// ── Progress bar ──────────────────────────────────────────────────────────────
+// ── Spend Progress ────────────────────────────────────────────────────────────
 const SpendProgress = ({ spent, target, qualified }) => {
-  const pct = Math.min(100, (spent / target) * 100);
+  const pct = Math.min(100, Math.round((spent / target) * 100));
   return (
     <div>
       <div className="flex justify-between items-end mb-2">
-        <span className="text-sm font-semibold text-gray-700">Your Progress</span>
+        <span className="text-sm font-semibold text-gray-700">Your Spend</span>
         <span className={`text-xs font-bold ${qualified ? 'text-green-600' : 'text-orange-500'}`}>
           Rs. {Math.round(spent).toLocaleString()} / Rs. {Number(target).toLocaleString()}
         </span>
@@ -59,7 +60,7 @@ const SpendProgress = ({ spent, target, qualified }) => {
         />
       </div>
       <div className="flex justify-between mt-1.5">
-        <span className="text-xs text-gray-400">{Math.round(pct)}% complete</span>
+        <span className="text-xs text-gray-400">{pct}% complete</span>
         {!qualified && (
           <span className="text-xs text-orange-500 font-medium">
             Rs. {Math.max(0, Number(target) - Math.round(spent)).toLocaleString()} more needed
@@ -74,16 +75,15 @@ const SpendProgress = ({ spent, target, qualified }) => {
 const LuckyDrawPage = () => {
   useSEO({
     title:       'Lucky Draw – Zouq Cafe Buch Villas Multan | Win Big Prizes',
-    description: 'Join the Zouq Cafe Lucky Draw in Buch Villas Multan! Order food, qualify and win amazing prizes. The more you order, the better your chances!',
-    keywords:    'lucky draw Multan, restaurant lucky draw Buch Villas, win prizes Multan, Zouq Cafe lucky draw, free prize Multan restaurant',
+    description: 'Join the Zouq Cafe Lucky Draw in Buch Villas Multan! Order food, qualify and win amazing prizes.',
+    keywords:    'lucky draw Multan, restaurant lucky draw Buch Villas, win prizes Multan, Zouq Cafe lucky draw',
     canonical:   'https://zouqcafe.com/lucky-draw',
   });
 
   const { user } = useAuthStore();
-  const [data,    setData]    = useState(null);  // { draw, myEntry, myTotalSpent, qualified }
+  const [data,    setData]    = useState(null);
   const [winners, setWinners] = useState([]);
   const [loading, setLoading] = useState(true);
-  const countdown = useCountdown(data?.draw?.endsAt || new Date());
 
   useEffect(() => {
     const fetchAll = async () => {
@@ -104,34 +104,30 @@ const LuckyDrawPage = () => {
     return <div className="flex justify-center items-center min-h-[60vh]"><Spinner size="lg" /></div>;
   }
 
-  const draw     = data?.draw;
-  const qualified = data?.qualified ?? false;
-  const spent    = data?.myTotalSpent ?? 0;
-  const target   = data?.minSpendAmount ?? 0;
-  const entryCount = draw?._count?.entries ?? 0;
+  const draw          = data?.draw;
+  const qualified     = data?.qualified ?? false;
+  const spent         = data?.myTotalSpent ?? 0;
+  const target        = data?.minSpendAmount ?? 0;
+  const currentEntries = data?.currentEntries ?? 0;
+  const maxEntries    = data?.maxEntries ?? 100;
 
   return (
     <div className="max-w-2xl mx-auto px-4 py-8 pb-28">
 
       {/* ── Hero banner ── */}
       <div className="relative rounded-3xl overflow-hidden mb-6 shadow-xl">
-        {/* 16:9 banner image OR gradient fallback */}
         <div className="relative w-full" style={{ aspectRatio: '16/9' }}>
           {draw?.bannerUrl ? (
-            <img
-              src={draw.bannerUrl}
-              alt={draw?.title || 'Lucky Draw'}
-              className="w-full h-full object-cover"
-            />
+            <img src={draw.bannerUrl} alt={draw?.title || 'Lucky Draw'}
+              className="w-full h-full object-cover" />
           ) : (
             <div className="w-full h-full"
               style={{ background: 'linear-gradient(135deg, #ea580c 0%, #f59e0b 60%, #f97316 100%)' }}>
-              {/* Decorative ticket pattern */}
               <div className="absolute inset-0 overflow-hidden opacity-10 select-none">
                 {[
-                  { top:'8%',  left:'5%'  }, { top:'15%', left:'30%' }, { top:'5%',  left:'60%' },
-                  { top:'30%', left:'82%' }, { top:'55%', left:'10%' }, { top:'65%', left:'50%' },
-                  { top:'75%', left:'75%' }, { top:'45%', left:'40%' }, { top:'80%', left:'20%' },
+                  { top:'8%', left:'5%' }, { top:'15%', left:'30%' }, { top:'5%',  left:'60%' },
+                  { top:'30%',left:'82%'}, { top:'55%', left:'10%' }, { top:'65%', left:'50%' },
+                  { top:'75%',left:'75%'}, { top:'45%', left:'40%' }, { top:'80%', left:'20%' },
                 ].map((s, i) => (
                   <span key={i} className="absolute text-5xl"
                     style={{ top: s.top, left: s.left, transform: 'rotate(12deg)' }}>🎟️</span>
@@ -140,13 +136,10 @@ const LuckyDrawPage = () => {
             </div>
           )}
 
-          {/* Dark gradient overlay at bottom for text readability */}
           <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/20 to-transparent" />
 
-          {/* Content overlaid on banner */}
           <div className="absolute bottom-0 left-0 right-0 px-5 pb-5 pt-8">
-            {/* Live badge */}
-            {draw && !countdown.done && (
+            {draw && (
               <span className="inline-flex items-center gap-1.5 bg-green-500 text-white text-xs font-bold px-2.5 py-1 rounded-full mb-2">
                 <span className="w-1.5 h-1.5 bg-white rounded-full animate-pulse" />
                 LIVE
@@ -161,32 +154,30 @@ const LuckyDrawPage = () => {
               <p className="text-white/70 text-sm mt-1">No active draw right now — stay tuned!</p>
             )}
 
-            {/* Countdown timer */}
-            {draw && !countdown.done && (
+            {/* Entry count progress on banner */}
+            {draw && (
               <div className="mt-3">
                 <p className="text-white/60 text-[10px] font-semibold uppercase tracking-widest mb-1.5">
-                  Draw ends in
+                  Entries so far
                 </p>
-                <div className="flex gap-2">
-                  {countdown.days > 0 && <CountdownBox value={countdown.days}    label="Days" />}
-                  <CountdownBox value={countdown.hours}   label="Hours" />
-                  <CountdownBox value={countdown.minutes} label="Mins"  />
-                  <CountdownBox value={countdown.seconds} label="Secs"  />
+                <div className="flex items-center gap-3">
+                  <div className="flex-1 h-2 bg-white/20 rounded-full overflow-hidden">
+                    <div
+                      className="h-full bg-white rounded-full transition-all duration-700"
+                      style={{ width: `${Math.min(100, (currentEntries / maxEntries) * 100)}%` }}
+                    />
+                  </div>
+                  <span className="text-white font-extrabold text-sm whitespace-nowrap">
+                    {currentEntries} / {maxEntries}
+                  </span>
                 </div>
-              </div>
-            )}
-
-            {draw && countdown.done && (
-              <div className="mt-3 inline-flex items-center gap-2 bg-white/20 backdrop-blur-sm rounded-xl px-4 py-2">
-                <Clock size={14} className="text-white/70" />
-                <p className="text-white text-sm font-semibold">Draw ended — winner announcement soon!</p>
               </div>
             )}
           </div>
         </div>
       </div>
 
-      {/* ── Description card (below banner) ── */}
+      {/* ── Description ── */}
       {draw?.description && (
         <div className="bg-white rounded-2xl px-5 py-4 shadow-sm mb-5 border-l-4 border-orange-400">
           <p className="text-sm text-gray-700 leading-relaxed">{draw.description}</p>
@@ -196,7 +187,7 @@ const LuckyDrawPage = () => {
       {/* ── No active draw ── */}
       {!draw && (
         <div className="text-center py-10">
-          <Clock size={44} className="mx-auto mb-3 text-gray-300" />
+          <Target size={44} className="mx-auto mb-3 text-gray-300" />
           <p className="font-semibold text-gray-500">No active lucky draw right now.</p>
           <p className="text-sm text-gray-400 mt-1">Coming soon — keep ordering!</p>
         </div>
@@ -213,10 +204,11 @@ const LuckyDrawPage = () => {
             </h2>
             <div className="space-y-3">
               {[
-                { icon: '1️⃣', text: `Order Rs. ${Number(draw.minSpendAmount).toLocaleString()} or more during the draw period` },
+                { icon: '1️⃣', text: `Order Rs. ${Number(draw.minSpendAmount).toLocaleString()} or more (total delivered orders)` },
                 { icon: '2️⃣', text: 'After your order is Delivered, you are automatically added to the list' },
-                { icon: '3️⃣', text: 'On the draw date, admin will randomly pick one lucky winner' },
-                { icon: '4️⃣', text: 'Winner must visit the cafe to claim their prize' },
+                { icon: '3️⃣', text: `When ${maxEntries} unique customers qualify, admin picks one lucky winner` },
+                { icon: '4️⃣', text: 'Ordering multiple times does NOT give you extra entries — one entry per customer' },
+                { icon: '5️⃣', text: 'Winner must visit the cafe to claim their prize' },
               ].map(({ icon, text }) => (
                 <div key={icon} className="flex items-start gap-3">
                   <span className="text-xl flex-shrink-0">{icon}</span>
@@ -233,16 +225,11 @@ const LuckyDrawPage = () => {
               <p className="font-bold text-gray-900 mb-1">Login Required</p>
               <p className="text-sm text-gray-500 mb-4">Please login to participate in the Lucky Draw</p>
               <div className="flex gap-3 justify-center">
-                <Link to="/login">
-                  <Button variant="primary" size="sm">Login</Button>
-                </Link>
-                <Link to="/signup">
-                  <Button variant="outline" size="sm">Sign Up</Button>
-                </Link>
+                <Link to="/login"><Button variant="primary" size="sm">Login</Button></Link>
+                <Link to="/signup"><Button variant="outline" size="sm">Sign Up</Button></Link>
               </div>
             </div>
           ) : qualified ? (
-            /* Qualified */
             <div className="bg-gradient-to-br from-green-50 to-emerald-50 border-2 border-green-300 rounded-2xl p-5"
               style={{ animation: 'popIn 0.4s cubic-bezier(0.34,1.56,0.64,1)' }}>
               <style>{`@keyframes popIn{from{transform:scale(0.95);opacity:0}to{transform:scale(1);opacity:1}}`}</style>
@@ -251,8 +238,8 @@ const LuckyDrawPage = () => {
                   <CheckCircle size={24} className="text-white" />
                 </div>
                 <div>
-                  <p className="font-extrabold text-green-700 text-lg">Congratulations! ✨</p>
-                  <p className="text-sm text-green-600">You are qualified for this Lucky Draw</p>
+                  <p className="font-extrabold text-green-700 text-lg">You're In! ✨</p>
+                  <p className="text-sm text-green-600">Your name is in the lucky draw list</p>
                 </div>
               </div>
               <div className="bg-white rounded-xl px-4 py-3 flex items-center gap-3 mb-4">
@@ -266,13 +253,12 @@ const LuckyDrawPage = () => {
                   <p className="font-extrabold text-orange-600">Rs. {Math.round(spent).toLocaleString()}</p>
                 </div>
               </div>
-              <SpendProgress spent={spent} target={target} qualified={true} />
-              <p className="text-xs text-gray-400 text-center mt-3">
-                Good luck! Draw result: <strong>{new Date(draw.endsAt).toLocaleDateString('en-PK', { day: 'numeric', month: 'long', year: 'numeric' })}</strong>
+              <p className="text-xs text-gray-400 text-center">
+                Draw happens when <strong>{maxEntries} unique customers</strong> qualify.
+                Currently <strong>{currentEntries}</strong> are in.
               </p>
             </div>
           ) : (
-            /* Not yet qualified */
             <div className="bg-white rounded-2xl p-5 shadow-sm border-2 border-orange-100">
               <div className="flex items-center gap-3 mb-4">
                 <div className="w-11 h-11 bg-orange-100 rounded-2xl flex items-center justify-center flex-shrink-0">
@@ -286,23 +272,20 @@ const LuckyDrawPage = () => {
               <SpendProgress spent={spent} target={target} qualified={false} />
               <Link to="/menu" className="mt-4 block">
                 <Button variant="primary" fullWidth>
-                  <ShoppingBag size={16} className="mr-2" /> Menu Dekho
+                  <ShoppingBag size={16} className="mr-2" /> Order Now
                   <ChevronRight size={16} className="ml-1" />
                 </Button>
               </Link>
             </div>
           )}
 
-          {/* Draw info strip */}
-          <div className="bg-white rounded-2xl px-5 py-4 shadow-sm flex items-center justify-between">
-            <div className="flex items-center gap-2 text-sm text-gray-500">
+          {/* Overall entry count card */}
+          <div className="bg-white rounded-2xl px-5 py-4 shadow-sm">
+            <div className="flex items-center gap-2 mb-3">
               <Users size={16} className="text-orange-400" />
-              <span><strong className="text-gray-900">{entryCount}</strong> qualified entries</span>
+              <span className="text-sm font-bold text-gray-700">Draw Progress</span>
             </div>
-            <div className="flex items-center gap-2 text-sm text-gray-500">
-              <Clock size={16} className="text-orange-400" />
-              <span>Ends <strong className="text-gray-900">{new Date(draw.endsAt).toLocaleDateString('en-PK', { day: 'numeric', month: 'short' })}</strong></span>
-            </div>
+            <EntryProgress current={currentEntries} max={maxEntries} />
           </div>
         </div>
       )}
@@ -321,7 +304,9 @@ const LuckyDrawPage = () => {
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="font-bold text-gray-900 truncate">{w.user?.name}</p>
-                  <p className="text-xs text-gray-400">{w.draw?.title} · {new Date(w.wonAt).toLocaleDateString('en-PK', { day: 'numeric', month: 'short', year: 'numeric' })}</p>
+                  <p className="text-xs text-gray-400">
+                    {w.draw?.title} · {new Date(w.wonAt).toLocaleDateString('en-PK', { day: 'numeric', month: 'short', year: 'numeric' })}
+                  </p>
                 </div>
                 <div className="text-right flex-shrink-0">
                   <p className="text-xs text-gray-400">Prize</p>

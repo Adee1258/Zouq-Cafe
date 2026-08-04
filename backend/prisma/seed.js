@@ -100,15 +100,15 @@ async function main() {
   // ─── EasyPaisa Payment Number ─────────────────────────────────────────────
   await prisma.appConfig.upsert({
     where: { key: 'easypaisa_number' },
-    update: {},
-    create: { key: 'easypaisa_number', value: '03XX-XXXXXXX' },
+    update: { value: '03008356059' },
+    create: { key: 'easypaisa_number', value: '03008356059' },
   });
   await prisma.appConfig.upsert({
     where: { key: 'easypaisa_account_name' },
-    update: {},
+    update: { value: 'ZOCK Cafe' },
     create: { key: 'easypaisa_account_name', value: 'ZOCK Cafe' },
   });
-  console.log('✅ App config: easypaisa_number seeded (update via admin panel)');
+  console.log('✅ App config: easypaisa_number = 03008356059');
 
   // ─── Weekly Missions ──────────────────────────────────────────────────────────
   const missions = [

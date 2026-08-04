@@ -1,7 +1,11 @@
 // Socket.IO client — single shared connection for the whole app
 import { io } from 'socket.io-client';
 
-const SOCKET_URL = import.meta.env.VITE_SOCKET_URL || 'http://localhost:5000';
+// Production pe VITE_SOCKET_URL env var set karo (backend Vercel URL)
+// e.g. VITE_SOCKET_URL=https://zouq-cafe-backend.vercel.app
+// Agar set nahi toh same origin use karo (frontend aur backend same domain pe ho toh)
+const SOCKET_URL = import.meta.env.VITE_SOCKET_URL || 
+  (import.meta.env.VITE_API_URL || window.location.origin);
 
 /**
  * Reads the active JWT token from localStorage.

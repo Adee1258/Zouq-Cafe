@@ -9,8 +9,14 @@ const useDataStore = create((set, get) => ({
   error: null,
 
   fetchData: async (force = false) => {
-    // If already fetched and not forcing a refresh, return early
-    if (get().hasFetched && !force) return;
+    // Skip if already successfully fetched and not forcing a refresh
+    // But if hasFetched is true with empty data, allow a retry
+    const state = get();
+    const hasData = state.products.length > 0 && state.categories.length > 0;
+    if (state.hasFetched && hasData && !force) return;
+
+    // Prevent concurrent fetches
+    if (state.isLoading) return;
 
     set({ isLoading: true, error: null });
     try {
@@ -18,14 +24,17 @@ const useDataStore = create((set, get) => ({
         api.get('/categories'),
         api.get('/products?available=true'),
       ]);
+      const categories = catRes.data.data.categories || [];
+      const products   = prodRes.data.data.products   || [];
       set({
-        categories: catRes.data.data.categories,
-        products: prodRes.data.data.products,
+        categories,
+        products,
         hasFetched: true,
         isLoading: false,
+        error: null,
       });
     } catch (err) {
-      set({ isLoading: false, error: err.message });
+      set({ isLoading: false, hasFetched: false, error: err.message });
     }
   },
 }));

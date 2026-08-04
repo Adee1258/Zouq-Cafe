@@ -623,11 +623,44 @@ const CheckoutPage = () => {
             ))}
           </div>
           {form.paymentType === 'ONLINE' && (
-            <div className="mt-3 bg-green-50 border border-green-200 rounded-xl px-4 py-3 text-sm text-green-700 flex items-start gap-2">
-              <Phone size={16} className="text-green-600 flex-shrink-0 mt-0.5" />
-              <div>
-                <p className="font-bold">EasyPaisa Manual Payment</p>
-                <p className="text-xs mt-0.5">After placing order, you'll see our EasyPaisa number. Send the amount and upload screenshot for verification.</p>
+            <div className="mt-3 space-y-2">
+              {/* EasyPaisa number card */}
+              <div className="bg-green-50 border-2 border-green-300 rounded-xl p-4">
+                <div className="flex items-center gap-2 mb-3">
+                  <Phone size={16} className="text-green-600 flex-shrink-0" />
+                  <p className="font-bold text-green-700 text-sm">EasyPaisa Number</p>
+                </div>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-2xl font-extrabold text-gray-900 tracking-wider">
+                      {epInfo?.number || '0300-8356059'}
+                    </p>
+                    <p className="text-xs text-gray-500 mt-0.5">{epInfo?.accountName || 'ZOCK Cafe'}</p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      navigator.clipboard.writeText(epInfo?.number || '03008356059');
+                      toast.success('Number copied!');
+                    }}
+                    className="p-2.5 rounded-xl bg-green-100 hover:bg-green-200 transition-colors flex-shrink-0"
+                  >
+                    <Copy size={18} className="text-green-600" />
+                  </button>
+                </div>
+              </div>
+
+              {/* Instructions */}
+              <div className="bg-amber-50 border border-amber-200 rounded-xl px-4 py-3">
+                <p className="text-xs font-bold text-amber-700 mb-2 flex items-center gap-1">
+                  <AlertCircle size={13} /> How to pay:
+                </p>
+                <ol className="text-xs text-amber-700 space-y-1.5">
+                  <li className="flex items-start gap-2"><span className="font-bold flex-shrink-0">1.</span> Order place karo</li>
+                  <li className="flex items-start gap-2"><span className="font-bold flex-shrink-0">2.</span> Upar diye number pe EasyPaisa se <strong>exact amount</strong> send karo</li>
+                  <li className="flex items-start gap-2"><span className="font-bold flex-shrink-0">3.</span> Payment ka screenshot upload karo</li>
+                  <li className="flex items-start gap-2"><span className="font-bold flex-shrink-0">4.</span> Admin verify karega aur order approve ho jayega</li>
+                </ol>
               </div>
             </div>
           )}

@@ -47,7 +47,7 @@ const Navbar = ({ onCartOpen }) => {
               onClick={() => setMenuOpen(false)}
             >
               <span className="text-2xl">🍽️</span>
-              <span>Zouq Cafe</span>
+              <span>ZOCK Cafe</span>
             </Link>
 
             {/* ── Desktop Nav Links ── */}

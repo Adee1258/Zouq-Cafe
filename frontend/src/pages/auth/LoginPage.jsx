@@ -69,7 +69,7 @@ const LoginPage = () => {
           <div className="text-center mb-8">
             <Link to="/" className="inline-block text-3xl mb-3">🍽️</Link>
             <h1 className="text-2xl font-bold text-gray-900">Welcome back</h1>
-            <p className="text-gray-500 text-sm mt-1">Login to your Zouq Cafe account</p>
+            <p className="text-gray-500 text-sm mt-1">Login to your ZOCK Cafe account</p>
           </div>
 
           {/* Login method toggle — Phone first */}

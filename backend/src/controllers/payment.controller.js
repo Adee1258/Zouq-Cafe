@@ -87,7 +87,7 @@ const initiatePayment = async (req, res) => {
       amount,
       expiryDate:      expiryStr,
       merchantOrderId,
-      orderDesc:       `Zouq Cafe Order #${order.id}`,
+      orderDesc:       `ZOCK Cafe Order #${order.id}`,
       postBackURL,
       storeId:         STORE_ID,
       tansactionType:  'InitialRequest',  // note: EasyPaisa typo in their docs

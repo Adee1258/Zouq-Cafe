@@ -242,9 +242,9 @@ const CountdownBox = ({ value, label }) => (
 // ── Main Page ─────────────────────────────────────────────────────────────────
 const MissionsPage = () => {
   useSEO({
-    title:       'Weekly Missions – Zouq Cafe | Earn Discount Vouchers',
-    description: 'Complete weekly missions at Zouq Cafe Buch Villas Multan and earn discount vouchers. Buy items or deals to unlock rewards!',
-    keywords:    'missions Zouq Cafe, weekly missions Multan, discount vouchers Multan, Zouq Cafe rewards',
+    title:       'Weekly Missions – ZOCK Cafe | Earn Discount Vouchers',
+    description: 'Complete weekly missions at ZOCK Cafe Buch Villas Multan and earn discount vouchers. Buy items or deals to unlock rewards!',
+    keywords:    'missions ZOCK Cafe, weekly missions Multan, discount vouchers Multan, ZOCK Cafe rewards',
     canonical:   'https://zouqcafe.com/missions',
   });
 

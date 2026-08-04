@@ -27,11 +27,11 @@ const ProductDetailPage = () => {
   useSEO(
     product
       ? {
-          title:       `${product.name} – Zouq Cafe Buch Villas Multan | Order Online`,
+          title:       `${product.name} – ZOCK Cafe Buch Villas Multan | Order Online`,
           description: product.description
-            ? `${product.description} Order ${product.name} online from Zouq Cafe, Buch Villas Multan. Fast delivery!`
-            : `Order ${product.name} from Zouq Cafe in Buch Villas, Multan. Fresh, delicious and fast delivery!`,
-          keywords:    `${product.name}, ${product.category?.name || ''}, Zouq Cafe Multan, food delivery Buch Villas, order online Multan`,
+            ? `${product.description} Order ${product.name} online from ZOCK Cafe, Buch Villas Multan. Fast delivery!`
+            : `Order ${product.name} from ZOCK Cafe in Buch Villas, Multan. Fresh, delicious and fast delivery!`,
+          keywords:    `${product.name}, ${product.category?.name || ''}, ZOCK Cafe Multan, food delivery Buch Villas, order online Multan`,
           canonical:   `https://zouqcafe.com/product/${id}`,
           ogImage:     product.imageUrl || 'https://zouqcafe.com/og-image.jpg',
           ogType:      'product',
@@ -40,10 +40,10 @@ const ProductDetailPage = () => {
             '@context':   'https://schema.org',
             '@type':      'Product',
             name:         product.name,
-            description:  product.description || `${product.name} at Zouq Cafe, Buch Villas Multan`,
+            description:  product.description || `${product.name} at ZOCK Cafe, Buch Villas Multan`,
             image:        product.imageUrl || 'https://zouqcafe.com/og-image.jpg',
             url:          `https://zouqcafe.com/product/${id}`,
-            brand: { '@type': 'Brand', name: 'Zouq Cafe' },
+            brand: { '@type': 'Brand', name: 'ZOCK Cafe' },
             offers: {
               '@type':          'Offer',
               priceCurrency:    'PKR',
@@ -51,7 +51,7 @@ const ProductDetailPage = () => {
               availability:     product.isAvailable
                 ? 'https://schema.org/InStock'
                 : 'https://schema.org/OutOfStock',
-              seller: { '@type': 'Organization', name: 'Zouq Cafe' },
+              seller: { '@type': 'Organization', name: 'ZOCK Cafe' },
             },
           },
         }

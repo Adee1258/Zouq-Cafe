@@ -43,7 +43,7 @@ const AdminLoginPage = () => {
           <div className="text-center mb-8">
             <div className="text-4xl mb-3">🍽️</div>
             <h1 className="text-xl font-bold text-white">Admin Portal</h1>
-            <p className="text-gray-400 text-sm mt-1">Zouq Cafe Management</p>
+            <p className="text-gray-400 text-sm mt-1">ZOCK Cafe Management</p>
           </div>
 
           <form onSubmit={handleSubmit} noValidate autoComplete="off" className="space-y-4">

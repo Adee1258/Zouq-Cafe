@@ -15,59 +15,59 @@
 // ── Per-route SEO ─────────────────────────────────────────────────────────────
 const ROUTE_SEO = {
   '/': {
-    title: 'Zouq Cafe Buch Villas Multan | BBQ, Tikka, Seekh Kabab & Food Delivery',
+    title: 'ZOCK Cafe Buch Villas Multan | BBQ, Tikka, Seekh Kabab & Food Delivery',
     description:
-      'Zouq Cafe – Multan ka best BBQ restaurant in Buch Villas. Fresh tikka, seekh kabab, BBQ platter, chicken BBQ, burgers, shawarma aur drinks. Online order karo, fast delivery!',
+      'ZOCK Cafe – Multan ka best BBQ restaurant in Buch Villas. Fresh tikka, seekh kabab, BBQ platter, chicken BBQ, burgers, shawarma aur drinks. Online order karo, fast delivery!',
     keywords:
-      'Zouq Cafe, BBQ Buch Villas Multan, tikka Multan, seekh kabab Multan, best BBQ restaurant Multan, Buch Villas restaurant, food delivery Multan, BBQ delivery Buch Villas',
+      'ZOCK Cafe, BBQ Buch Villas Multan, tikka Multan, seekh kabab Multan, best BBQ restaurant Multan, Buch Villas restaurant, food delivery Multan, BBQ delivery Buch Villas',
   },
   '/menu': {
-    title: 'Menu | Zouq Cafe Buch Villas — BBQ Tikka, Seekh Kabab, Burgers & Drinks',
+    title: 'Menu | ZOCK Cafe Buch Villas — BBQ Tikka, Seekh Kabab, Burgers & Drinks',
     description:
-      'Full menu at Zouq Cafe Buch Villas Multan. Chicken tikka, beef tikka, seekh kabab, BBQ platter, chapli kabab, boti kabab, burgers, shawarma & drinks. Order online!',
+      'Full menu at ZOCK Cafe Buch Villas Multan. Chicken tikka, beef tikka, seekh kabab, BBQ platter, chapli kabab, boti kabab, burgers, shawarma & drinks. Order online!',
     keywords:
-      'Zouq Cafe menu, BBQ menu Multan, tikka menu Buch Villas, seekh kabab Multan, BBQ platter Multan, chicken tikka Multan, chapli kabab Multan, burger menu, shawarma Multan',
+      'ZOCK Cafe menu, BBQ menu Multan, tikka menu Buch Villas, seekh kabab Multan, BBQ platter Multan, chicken tikka Multan, chapli kabab Multan, burger menu, shawarma Multan',
   },
   '/deals': {
-    title: 'Hot Deals | Zouq Cafe Buch Villas — BBQ Combos & Tikka Bundles Multan',
+    title: 'Hot Deals | ZOCK Cafe Buch Villas — BBQ Combos & Tikka Bundles Multan',
     description:
-      'Best BBQ deals in Buch Villas Multan! Tikka combo, seekh kabab bundle, BBQ family platter at unbeatable prices. Order online from Zouq Cafe!',
+      'Best BBQ deals in Buch Villas Multan! Tikka combo, seekh kabab bundle, BBQ family platter at unbeatable prices. Order online from ZOCK Cafe!',
     keywords:
       'BBQ deals Multan, tikka combo Buch Villas, seekh kabab bundle Multan, BBQ bundle Multan, food deals Buch Villas, combo offer Multan',
   },
   '/spin': {
-    title: 'Spin & Win | Zouq Cafe Buch Villas Multan — Win Free BBQ & Prizes',
+    title: 'Spin & Win | ZOCK Cafe Buch Villas Multan — Win Free BBQ & Prizes',
     description:
-      'Spin the wheel at Zouq Cafe Buch Villas Multan and win free BBQ, tikka, discounts and exciting prizes every day! Login and spin to win.',
+      'Spin the wheel at ZOCK Cafe Buch Villas Multan and win free BBQ, tikka, discounts and exciting prizes every day! Login and spin to win.',
     keywords:
-      'spin and win Multan, free BBQ Zouq Cafe, win tikka Buch Villas, daily spin Multan restaurant, Zouq Cafe prizes',
+      'spin and win Multan, free BBQ ZOCK Cafe, win tikka Buch Villas, daily spin Multan restaurant, ZOCK Cafe prizes',
   },
   '/lucky-draw': {
-    title: 'Lucky Draw | Zouq Cafe Buch Villas Multan — Win Big BBQ Prizes',
+    title: 'Lucky Draw | ZOCK Cafe Buch Villas Multan — Win Big BBQ Prizes',
     description:
-      'Join the Zouq Cafe Lucky Draw in Buch Villas Multan! Order BBQ, tikka or any food, qualify and win amazing prizes.',
+      'Join the ZOCK Cafe Lucky Draw in Buch Villas Multan! Order BBQ, tikka or any food, qualify and win amazing prizes.',
     keywords:
-      'lucky draw Multan, BBQ prize lucky draw, Zouq Cafe lucky draw Buch Villas, win prizes Multan restaurant',
+      'lucky draw Multan, BBQ prize lucky draw, ZOCK Cafe lucky draw Buch Villas, win prizes Multan restaurant',
   },
   '/login': {
-    title: 'Login | Zouq Cafe Buch Villas Multan',
+    title: 'Login | ZOCK Cafe Buch Villas Multan',
     description:
-      'Login to Zouq Cafe and order fresh BBQ tikka, seekh kabab and more from Buch Villas Multan. Fast delivery at your doorstep.',
-    keywords: 'Zouq Cafe login, order BBQ Multan, food delivery Buch Villas',
+      'Login to ZOCK Cafe and order fresh BBQ tikka, seekh kabab and more from Buch Villas Multan. Fast delivery at your doorstep.',
+    keywords: 'ZOCK Cafe login, order BBQ Multan, food delivery Buch Villas',
   },
   '/signup': {
-    title: 'Sign Up | Zouq Cafe Buch Villas Multan — Free Account',
+    title: 'Sign Up | ZOCK Cafe Buch Villas Multan — Free Account',
     description:
-      'Create a free account at Zouq Cafe Buch Villas Multan. Get daily spin rewards, lucky draw entries and order the best BBQ and fast food online.',
-    keywords: 'Zouq Cafe signup, BBQ order account Multan, Buch Villas food delivery account',
+      'Create a free account at ZOCK Cafe Buch Villas Multan. Get daily spin rewards, lucky draw entries and order the best BBQ and fast food online.',
+    keywords: 'ZOCK Cafe signup, BBQ order account Multan, Buch Villas food delivery account',
   },
 };
 
 // ── Static visible content per route (Google indexes this) ────────────────────
 const STATIC_CONTENT = {
   '/': `<div id="seo-content" style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap" aria-hidden="true">
-<h1>Zouq Cafe — Best BBQ Restaurant in Buch Villas, Multan</h1>
-<p>Zouq Cafe Multan ka sabse behtareen BBQ restaurant hai, Manik Block, Buch Executive Villas, Bosan Road mein located. Hum serve karte hain fresh charcoal-grilled tikka, seekh kabab, BBQ platters, chicken BBQ, boti kabab, chapli kabab, burgers, shawarma aur drinks. Online order karo, fast delivery ghar tak.</p>
+<h1>ZOCK Cafe — Best BBQ Restaurant in Buch Villas, Multan</h1>
+<p>ZOCK Cafe Multan ka sabse behtareen BBQ restaurant hai, Manik Block, Buch Executive Villas, Bosan Road mein located. Hum serve karte hain fresh charcoal-grilled tikka, seekh kabab, BBQ platters, chicken BBQ, boti kabab, chapli kabab, burgers, shawarma aur drinks. Online order karo, fast delivery ghar tak.</p>
 <h2>Our BBQ Specialties</h2>
 <ul>
 <li>Chicken Tikka — Fresh marinated charcoal-grilled chicken tikka</li>
@@ -85,8 +85,8 @@ const STATIC_CONTENT = {
 </div>`,
 
   '/menu': `<div id="seo-content" style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap" aria-hidden="true">
-<h1>Zouq Cafe Full Menu — BBQ, Tikka, Seekh Kabab in Buch Villas Multan</h1>
-<h2>BBQ Menu — Zouq Cafe Multan</h2>
+<h1>ZOCK Cafe Full Menu — BBQ, Tikka, Seekh Kabab in Buch Villas Multan</h1>
+<h2>BBQ Menu — ZOCK Cafe Multan</h2>
 <ul>
 <li>Chicken Tikka</li><li>Beef Tikka</li><li>Seekh Kabab</li>
 <li>BBQ Platter</li><li>Chapli Kabab</li><li>Boti Kabab</li>
@@ -100,8 +100,8 @@ const STATIC_CONTENT = {
 </div>`,
 
   '/deals': `<div id="seo-content" style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap" aria-hidden="true">
-<h1>Hot Deals — BBQ Combos and Tikka Bundles at Zouq Cafe Buch Villas Multan</h1>
-<p>Best BBQ deals in Buch Villas Multan — tikka combos, seekh kabab bundles, family BBQ platters at unbeatable prices from Zouq Cafe.</p>
+<h1>Hot Deals — BBQ Combos and Tikka Bundles at ZOCK Cafe Buch Villas Multan</h1>
+<p>Best BBQ deals in Buch Villas Multan — tikka combos, seekh kabab bundles, family BBQ platters at unbeatable prices from ZOCK Cafe.</p>
 <h2>Popular Deals</h2>
 <ul>
 <li>BBQ Family Deal — Tikka + Seekh Kabab + Naan + Drink</li>

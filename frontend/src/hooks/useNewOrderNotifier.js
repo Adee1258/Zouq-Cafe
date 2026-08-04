@@ -19,7 +19,7 @@ const requestNotificationPermission = async () => {
 
 const showBrowserNotification = (count) => {
   if (Notification.permission !== 'granted') return;
-  const n = new Notification('🔔 New Order(s) — Zouq Cafe', {
+  const n = new Notification('🔔 New Order(s) — ZOCK Cafe', {
     body: `${count} new order${count > 1 ? 's' : ''} waiting for your approval.`,
     icon: '/favicon.svg',
     badge: '/favicon.svg',

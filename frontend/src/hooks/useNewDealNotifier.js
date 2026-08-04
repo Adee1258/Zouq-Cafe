@@ -19,7 +19,7 @@ const requestPermission = async () => {
 
 const showDealNotification = (deal) => {
   if (Notification.permission !== 'granted') return;
-  const n = new Notification('🔥 New Deal — Zouq Cafe', {
+  const n = new Notification('🔥 New Deal — ZOCK Cafe', {
     body: `${deal.title} — Rs. ${Number(deal.dealPrice).toLocaleString()}. Limited time offer!`,
     icon: deal.imageUrl || '/favicon.svg',
     badge: '/favicon.svg',

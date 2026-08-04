@@ -1,5 +1,5 @@
 /**
- * useSEO — extreme-level SEO hook for Zouq Cafe
+ * useSEO — extreme-level SEO hook for ZOCK Cafe
  *
  * Sets document.title + all critical <head> meta tags on every route change.
  * Works without any external library (no react-helmet needed).
@@ -11,9 +11,9 @@ import { useEffect } from 'react';
 
 // ── Defaults (fallback for every page) ───────────────────────────────────────
 const DEFAULTS = {
-  title:       'Zouq Cafe Buch Villas Multan | BBQ, Tikka, Seekh Kabab & Food Delivery',
-  description: 'Zouq Cafe – Multan ka best BBQ restaurant in Buch Villas. Fresh tikka, seekh kabab, BBQ platter, chicken BBQ, burgers, shawarma & drinks. Online order karo, fast delivery!',
-  keywords:    'BBQ Buch Villas Multan, tikka Multan, seekh kabab Multan, Zouq Cafe BBQ, best BBQ restaurant Multan, chicken tikka Multan, BBQ delivery Buch Villas, food delivery Multan',
+  title:       'ZOCK Cafe Buch Villas Multan | BBQ, Tikka, Seekh Kabab & Food Delivery',
+  description: 'ZOCK Cafe – Multan ka best BBQ restaurant in Buch Villas. Fresh tikka, seekh kabab, BBQ platter, chicken BBQ, burgers, shawarma & drinks. Online order karo, fast delivery!',
+  keywords:    'BBQ Buch Villas Multan, tikka Multan, seekh kabab Multan, ZOCK Cafe BBQ, best BBQ restaurant Multan, chicken tikka Multan, BBQ delivery Buch Villas, food delivery Multan',
   canonical:   'https://zouqcafe.com/',
   ogImage:     'https://zouqcafe.com/og-image.jpg',
   ogType:      'restaurant',
@@ -96,7 +96,7 @@ const useSEO = ({
     setMeta('meta[property="og:image"]',               'property', 'og:image',               resolvedOgImage);
     setMeta('meta[property="og:image:alt"]',           'property', 'og:image:alt',           resolvedTitle);
     setMeta('meta[property="og:type"]',                'property', 'og:type',                resolvedOgType);
-    setMeta('meta[property="og:site_name"]',           'property', 'og:site_name',           'Zouq Cafe');
+    setMeta('meta[property="og:site_name"]',           'property', 'og:site_name',           'ZOCK Cafe');
 
     // 5. Twitter Card
     setMeta('meta[name="twitter:title"]',              'name', 'twitter:title',              resolvedTitle);

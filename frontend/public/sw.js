@@ -1,4 +1,4 @@
-// ─── Zouq Cafe Service Worker — Web Push Handler ─────────────────────────────
+// ─── ZOCK Cafe Service Worker — Web Push Handler ─────────────────────────────
 
 self.addEventListener('install', () => self.skipWaiting());
 self.addEventListener('activate', (e) => e.waitUntil(self.clients.claim()));
@@ -12,7 +12,7 @@ self.addEventListener('push', (event) => {
     data = { title: '🛎️ New Order!', body: event.data?.text() || '' };
   }
 
-  const title   = data.title || '🛎️ Zouq Cafe';
+  const title   = data.title || '🛎️ ZOCK Cafe';
   const options = {
     body:    data.body  || 'New order received.',
     icon:    '/favicon.svg',

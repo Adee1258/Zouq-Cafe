@@ -76,7 +76,7 @@ const SignupPage = () => {
     const result = await signup(payload);
 
     if (result.success) {
-      toast.success('Account created! Welcome to Zouq Cafe 🎉');
+      toast.success('Account created! Welcome to ZOCK Cafe 🎉');
       navigate('/');
     } else {
       const msg = result.message || 'Signup failed.';
@@ -99,7 +99,7 @@ const SignupPage = () => {
           <div className="text-center mb-8">
             <Link to="/" className="inline-block text-3xl mb-3">🍽️</Link>
             <h1 className="text-2xl font-bold text-gray-900">Create account</h1>
-            <p className="text-gray-500 text-sm mt-1">Join Zouq Cafe and start ordering</p>
+            <p className="text-gray-500 text-sm mt-1">Join ZOCK Cafe and start ordering</p>
           </div>
 
           <form onSubmit={handleSubmit} noValidate className="space-y-4">

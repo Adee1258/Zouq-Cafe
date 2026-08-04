@@ -24,11 +24,11 @@ const DealDetailPage = () => {
   useSEO(
     deal
       ? {
-          title:       `${deal.title} – Hot Deal at Zouq Cafe Buch Villas Multan`,
+          title:       `${deal.title} – Hot Deal at ZOCK Cafe Buch Villas Multan`,
           description: deal.description
-            ? `${deal.description} Order the ${deal.title} deal from Zouq Cafe, Buch Villas Multan at only Rs. ${Number(deal.dealPrice).toLocaleString()}!`
-            : `Get the ${deal.title} deal at Zouq Cafe, Buch Villas Multan for only Rs. ${Number(deal.dealPrice).toLocaleString()}. Order online now!`,
-          keywords:    `${deal.title}, food deals Multan, hot deals Buch Villas, Zouq Cafe deals, combo offer Multan`,
+            ? `${deal.description} Order the ${deal.title} deal from ZOCK Cafe, Buch Villas Multan at only Rs. ${Number(deal.dealPrice).toLocaleString()}!`
+            : `Get the ${deal.title} deal at ZOCK Cafe, Buch Villas Multan for only Rs. ${Number(deal.dealPrice).toLocaleString()}. Order online now!`,
+          keywords:    `${deal.title}, food deals Multan, hot deals Buch Villas, ZOCK Cafe deals, combo offer Multan`,
           canonical:   `https://zouqcafe.com/deals/${id}`,
           ogImage:     deal.imageUrl || 'https://zouqcafe.com/og-image.jpg',
           schemaId:    'deal-schema',
@@ -36,12 +36,12 @@ const DealDetailPage = () => {
             '@context':  'https://schema.org',
             '@type':     'Offer',
             name:        deal.title,
-            description: deal.description || `${deal.title} at Zouq Cafe, Buch Villas Multan`,
+            description: deal.description || `${deal.title} at ZOCK Cafe, Buch Villas Multan`,
             price:       String(deal.dealPrice),
             priceCurrency: 'PKR',
             url:         `https://zouqcafe.com/deals/${id}`,
             image:       deal.imageUrl || 'https://zouqcafe.com/og-image.jpg',
-            seller: { '@type': 'Organization', name: 'Zouq Cafe', url: 'https://zouqcafe.com' },
+            seller: { '@type': 'Organization', name: 'ZOCK Cafe', url: 'https://zouqcafe.com' },
             availability: 'https://schema.org/InStock',
           },
         }

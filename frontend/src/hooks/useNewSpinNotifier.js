@@ -10,7 +10,7 @@ const STORAGE_KEY   = 'zouq_last_seen_spin_id';
 
 const showBrowserNotification = ({ userName, prizeName }) => {
   if (Notification.permission !== 'granted') return;
-  const n = new Notification('🎰 Spin Prize Won — Zouq Cafe', {
+  const n = new Notification('🎰 Spin Prize Won — ZOCK Cafe', {
     body: `${userName} just won: ${prizeName}`,
     icon: '/favicon.svg',
     badge: '/favicon.svg',

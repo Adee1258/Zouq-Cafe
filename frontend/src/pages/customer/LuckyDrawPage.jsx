@@ -74,9 +74,9 @@ const SpendProgress = ({ spent, target, qualified }) => {
 // ── Main Page ─────────────────────────────────────────────────────────────────
 const LuckyDrawPage = () => {
   useSEO({
-    title:       'Lucky Draw – Zouq Cafe Buch Villas Multan | Win Big Prizes',
-    description: 'Join the Zouq Cafe Lucky Draw in Buch Villas Multan! Order food, qualify and win amazing prizes.',
-    keywords:    'lucky draw Multan, restaurant lucky draw Buch Villas, win prizes Multan, Zouq Cafe lucky draw',
+    title:       'Lucky Draw – ZOCK Cafe Buch Villas Multan | Win Big Prizes',
+    description: 'Join the ZOCK Cafe Lucky Draw in Buch Villas Multan! Order food, qualify and win amazing prizes.',
+    keywords:    'lucky draw Multan, restaurant lucky draw Buch Villas, win prizes Multan, ZOCK Cafe lucky draw',
     canonical:   'https://zouqcafe.com/lucky-draw',
   });
 

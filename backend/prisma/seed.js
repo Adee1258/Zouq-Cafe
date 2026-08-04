@@ -15,7 +15,7 @@ async function main() {
     where: { email: 'admin@zouqcafe.com' },
     update: {},
     create: {
-      name: 'Zouq Admin',
+      name: 'ZOCK Admin',
       email: 'admin@zouqcafe.com',
       passwordHash: adminHash,
       role: 'ADMIN',

@@ -296,9 +296,9 @@ const HistoryItem = ({ item, onUse }) => {
 // ── Main Spin Page ────────────────────────────────────────────────────────────
 const SpinPage = () => {
   useSEO({
-    title:       'Spin & Win – Zouq Cafe Buch Villas Multan | Free Prizes Daily',
-    description: 'Spin the wheel daily at Zouq Cafe, Buch Villas Multan! Win free food, discounts and exciting prizes. Login and spin to win every day!',
-    keywords:    'spin and win Multan, free prizes Zouq Cafe, win food Buch Villas, daily spin Multan restaurant, Zouq Cafe promotions',
+    title:       'Spin & Win – ZOCK Cafe Buch Villas Multan | Free Prizes Daily',
+    description: 'Spin the wheel daily at ZOCK Cafe, Buch Villas Multan! Win free food, discounts and exciting prizes. Login and spin to win every day!',
+    keywords:    'spin and win Multan, free prizes ZOCK Cafe, win food Buch Villas, daily spin Multan restaurant, ZOCK Cafe promotions',
     canonical:   'https://zouqcafe.com/spin',
   });
   const { user } = useAuthStore();

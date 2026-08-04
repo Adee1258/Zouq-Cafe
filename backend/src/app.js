@@ -73,6 +73,7 @@ app.use('/api/loyalty',    require('./routes/loyalty.routes'));
 app.use('/api/admin',      require('./routes/admin.routes'));
 app.use('/api/push',       require('./routes/push.routes'));
 app.use('/api/lucky-draw', require('./routes/luckyDraw.routes'));
+app.use('/api/missions',  require('./routes/mission.routes'));
 
 // ─── Health check ─────────────────────────────────────────────────────────────
 app.get('/api/health', (req, res) => {

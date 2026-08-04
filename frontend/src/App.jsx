@@ -76,6 +76,7 @@ const AdminLuckyDrawPage  = lazy(() => import('./pages/admin/LuckyDrawPage'));
 
 // Customer pages (lucky draw)
 const LuckyDrawPage = lazy(() => import('./pages/customer/LuckyDrawPage'));
+const MissionsPage  = lazy(() => import('./pages/customer/MissionsPage'));
 
 // CartDrawer context — lets Navbar open the cart from anywhere
 import { createContext, useContext } from 'react';
@@ -132,6 +133,7 @@ const App = () => {
               <Route path="/deals" element={<HotDealsPage />} />
               <Route path="/deals/:id" element={<DealDetailPage />} />
               <Route path="/lucky-draw" element={<LuckyDrawPage />} />
+              <Route path="/missions"   element={<MissionsPage />} />
 
               {/* Auth-required customer routes */}
               <Route

@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import {
   User, MapPin, Phone, Mail, LogOut, Lock,
   Eye, EyeOff, ChevronRight, ShieldCheck, Package, Heart, ShoppingCart, Flame, Gift, Trophy, Clock, Star,
+  Target, Ticket, Copy, CheckCircle,
 } from 'lucide-react';
 import { Link, useNavigate, Navigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
@@ -15,6 +16,7 @@ import Input from '../../components/ui/Input';
 // ── Tabs ──────────────────────────────────────────────────────────────────────
 const TABS = [
   { id: 'profile',   label: 'Profile',   icon: User },
+  { id: 'missions',  label: 'Missions',  icon: Target },
   { id: 'loyalty',   label: 'Points',    icon: Trophy },
   { id: 'rewards',   label: 'Rewards',   icon: Gift },
   { id: 'favorites', label: 'Favorites', icon: Heart },
@@ -652,6 +654,194 @@ const FavoritesTab = () => {
     </div>
   );
 };
+// ── Missions Tab ──────────────────────────────────────────────────────────────
+const MissionsTab = () => {
+  const [data,     setData]     = useState(null);
+  const [loading,  setLoading]  = useState(true);
+
+  useEffect(() => {
+    api.get('/missions')
+      .then((r) => setData(r.data.data))
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="flex justify-center py-16">
+        <div className="w-8 h-8 border-[3px] border-orange-400 border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
+
+  const missions   = data?.missions || [];
+  const completed  = missions.filter((m) => m.completed);
+  const inProgress = missions.filter((m) => !m.completed);
+
+  const copyCode = (code) =>
+    navigator.clipboard.writeText(code)
+      .then(() => toast.success(`Code copied: ${code}`))
+      .catch(() => toast.error('Failed to copy'));
+
+  return (
+    <div className="space-y-4">
+
+      {/* Reset info */}
+      <div className="bg-gradient-to-r from-violet-500 to-orange-500 rounded-2xl p-4 text-white flex items-center gap-3 shadow-md">
+        <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center flex-shrink-0">
+          <Target size={20} className="text-white" />
+        </div>
+        <div>
+          <p className="font-bold text-sm">Weekly Missions</p>
+          <p className="text-white/80 text-xs">Resets every Monday at 5 AM PKT. Incomplete missions are discarded.</p>
+        </div>
+      </div>
+
+      {/* Stats */}
+      <div className="grid grid-cols-3 gap-2">
+        {[
+          { label: 'Total',     value: missions.length,   color: 'text-gray-700' },
+          { label: 'Done',      value: completed.length,  color: 'text-green-600' },
+          { label: 'Remaining', value: inProgress.length, color: 'text-orange-500' },
+        ].map(({ label, value, color }) => (
+          <div key={label} className="bg-white rounded-xl p-3 shadow-sm text-center">
+            <p className={`text-xl font-extrabold ${color}`}>{value}</p>
+            <p className="text-[11px] text-gray-400">{label}</p>
+          </div>
+        ))}
+      </div>
+
+      {missions.length === 0 ? (
+        <div className="bg-white rounded-2xl p-10 text-center shadow-sm">
+          <Target size={36} className="text-gray-200 mx-auto mb-2" />
+          <p className="text-sm text-gray-500 font-medium">No missions active right now</p>
+        </div>
+      ) : (
+        <>
+          {/* In-progress */}
+          {inProgress.length > 0 && (
+            <div>
+              <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-2 px-1">
+                In Progress ({inProgress.length})
+              </p>
+              <div className="space-y-3">
+                {inProgress.map((m) => (
+                  <div key={m.id} className="bg-white rounded-2xl shadow-sm p-4 border-2 border-transparent">
+                    <div className="flex items-start justify-between gap-2 mb-2">
+                      <div>
+                        <p className="text-sm font-bold text-gray-900">{m.title}</p>
+                        {m.description && <p className="text-xs text-gray-500 mt-0.5">{m.description}</p>}
+                      </div>
+                      <span className="inline-flex items-center gap-1 bg-amber-100 text-amber-700 text-xs font-bold px-2 py-0.5 rounded-full whitespace-nowrap flex-shrink-0">
+                        <Gift size={10} /> Rs.{m.voucherAmount}
+                      </span>
+                    </div>
+                    {/* Progress bar */}
+                    <div className="mb-1.5">
+                      <div className="flex justify-between text-[11px] text-gray-400 mb-1">
+                        <span>{m.progress} / {m.targetCount} {m.type === 'DEALS_BOUGHT' ? 'deals' : 'items'}</span>
+                        <span>{Math.min(100, Math.round((m.progress / m.targetCount) * 100))}%</span>
+                      </div>
+                      <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
+                        <div
+                          className="h-full rounded-full bg-gradient-to-r from-orange-400 to-amber-400 transition-all duration-700"
+                          style={{ width: `${Math.min(100, (m.progress / m.targetCount) * 100)}%` }}
+                        />
+                      </div>
+                    </div>
+                    <p className="text-[11px] text-gray-400">
+                      Min. order Rs.{m.minOrderForVoucher.toLocaleString()} to use voucher
+                    </p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Completed */}
+          {completed.length > 0 && (
+            <div>
+              <p className="text-xs font-bold text-green-600 uppercase tracking-widest mb-2 px-1 flex items-center gap-1">
+                <CheckCircle size={11} /> Completed ({completed.length})
+              </p>
+              <div className="space-y-3">
+                {completed.map((m) => (
+                  <div key={m.id} className="bg-white rounded-2xl shadow-sm p-4 border-2 border-green-200">
+                    <div className="flex items-center gap-2 mb-3">
+                      <div className="w-8 h-8 bg-green-500 rounded-xl flex items-center justify-center flex-shrink-0">
+                        <CheckCircle size={16} className="text-white" />
+                      </div>
+                      <div>
+                        <p className="text-sm font-bold text-gray-900">{m.title}</p>
+                        <p className="text-xs text-green-600 font-medium">Mission Complete!</p>
+                      </div>
+                    </div>
+
+                    {/* Voucher */}
+                    {m.voucher && (
+                      <div className={`rounded-xl border-2 p-3 ${
+                        m.voucher.redeemed
+                          ? 'bg-gray-50 border-gray-200 opacity-60'
+                          : new Date(m.voucher.expiresAt) < new Date()
+                          ? 'bg-red-50 border-red-200 opacity-60'
+                          : 'bg-amber-50 border-orange-300'
+                      }`}>
+                        <div className="flex items-center justify-between mb-1">
+                          <span className="text-lg font-extrabold text-orange-600">Rs. {m.voucher.amount} OFF</span>
+                          {m.voucher.redeemed ? (
+                            <span className="text-[10px] font-bold bg-gray-200 text-gray-500 px-2 py-0.5 rounded-full">Used</span>
+                          ) : new Date(m.voucher.expiresAt) < new Date() ? (
+                            <span className="text-[10px] font-bold bg-red-100 text-red-500 px-2 py-0.5 rounded-full">Expired</span>
+                          ) : (
+                            <span className="text-[10px] font-bold bg-green-100 text-green-600 px-2 py-0.5 rounded-full">Active</span>
+                          )}
+                        </div>
+                        <p className="text-xs text-gray-500 mb-2">Min. order Rs.{m.voucher.minOrder.toLocaleString()}</p>
+                        <button
+                          onClick={() => !m.voucher.redeemed && new Date(m.voucher.expiresAt) >= new Date() && copyCode(m.voucher.code)}
+                          disabled={m.voucher.redeemed || new Date(m.voucher.expiresAt) < new Date()}
+                          className={`w-full flex items-center justify-between px-3 py-2 rounded-lg font-mono text-sm font-bold tracking-widest ${
+                            m.voucher.redeemed || new Date(m.voucher.expiresAt) < new Date()
+                              ? 'bg-gray-200 text-gray-400 cursor-default'
+                              : 'bg-white border-2 border-dashed border-orange-300 text-orange-600 hover:bg-orange-50'
+                          }`}
+                        >
+                          <span>{m.voucher.code}</span>
+                          {!m.voucher.redeemed && new Date(m.voucher.expiresAt) >= new Date() && (
+                            <Copy size={13} className="text-orange-400" />
+                          )}
+                        </button>
+                        <p className="text-[10px] text-gray-400 text-center mt-1.5">
+                          {m.voucher.redeemed
+                            ? 'Already used'
+                            : `Expires ${new Date(m.voucher.expiresAt).toLocaleDateString('en-PK', { day: 'numeric', month: 'short' })}`}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </>
+      )}
+
+      {/* View all missions link */}
+      <Link
+        to="/missions"
+        className="flex items-center justify-between px-4 py-3 bg-white rounded-2xl shadow-sm hover:bg-orange-50 transition-colors"
+      >
+        <div className="flex items-center gap-2 text-sm font-semibold text-gray-700">
+          <Target size={16} className="text-orange-400" />
+          View Full Missions Page
+        </div>
+        <ChevronRight size={16} className="text-gray-400" />
+      </Link>
+    </div>
+  );
+};
+
+// ── Security Tab ──────────────────────────────────────────────────────────────
 const SecurityTab = () => {
   const [loading, setLoading] = useState(false);
   const [showCurrent, setShowCurrent] = useState(false);
@@ -827,6 +1017,7 @@ const ProfilePage = () => {
 
       {/* Tab content */}
       {activeTab === 'profile'   && <ProfileTab user={user} fetchMe={fetchMe} />}
+      {activeTab === 'missions'  && <MissionsTab />}
       {activeTab === 'loyalty'   && <LoyaltyTab />}
       {activeTab === 'rewards'   && <RewardsTab />}
       {activeTab === 'favorites' && <FavoritesTab />}

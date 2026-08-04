@@ -6,6 +6,7 @@ const { calcDiscount } = require('../utils/promoUtils');
 const { awardPointsForOrder, revokePointsForOrder, getConfig } = require('./loyalty.controller');
 const { sendToAdmins } = require('./push.controller');
 const { checkAndEnterDraw } = require('./luckyDraw.controller');
+const { updateMissionProgress } = require('./mission.controller');
 
 // ─── Shared include for order items ──────────────────────────────────────────
 const ORDER_ITEMS_INCLUDE = {
@@ -464,6 +465,8 @@ const updateOrderStatus = async (req, res) => {
       });
       // Auto-enter user into any active lucky draw if they qualify
       checkAndEnterDraw(order.user.id, Number(order.totalAmount));
+      // Update weekly mission progress
+      updateMissionProgress(order.user.id, order.id);
     }
 
     // Revoke loyalty points if order is rejected after delivery

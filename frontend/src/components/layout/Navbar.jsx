@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import {
   ShoppingCart, Menu, X, User, LogOut, Gift, Home,
-  UtensilsCrossed, ClipboardList, Flame, Ticket,
+  UtensilsCrossed, ClipboardList, Flame, Ticket, Target,
 } from 'lucide-react';
 import useAuthStore from '../../stores/authStore';
 import useCartStore from '../../stores/cartStore';
@@ -26,6 +26,7 @@ const Navbar = ({ onCartOpen }) => {
     { to: '/menu',        label: 'Menu',        icon: UtensilsCrossed },
     { to: '/deals',       label: 'Hot Deals',   icon: Flame },
     { to: '/lucky-draw',  label: 'Lucky Draw',  icon: Ticket },
+    { to: '/missions',    label: 'Missions',    icon: Target },
     { to: '/spin',        label: 'Spin & Win',  icon: Gift },
     { to: '/orders',      label: 'My Orders',   icon: ClipboardList, auth: true },
   ];

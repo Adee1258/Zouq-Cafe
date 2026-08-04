@@ -59,6 +59,8 @@ model User {
   resetTokens    PasswordResetToken[]
   drawEntries    LuckyDrawEntry[]
   drawWins       LuckyDrawWinner[]
+  missionProgress UserMissionProgress[]
+  missionVouchers MissionVoucher[]
 
   @@map("users")
 }
@@ -373,4 +375,74 @@ model PointsTransaction {
   @@index([userId])
   @@index([orderId])
   @@map("points_transactions")
+}
+
+// ─── Weekly Missions ──────────────────────────────────────────────────────────
+
+// Mission type: how progress is measured
+enum MissionType {
+  ITEMS_BOUGHT   // count total individual items (qty sum) in delivered orders
+  DEALS_BOUGHT   // count distinct deal instances bought
+}
+
+// A mission definition (admin-managed, seeded by default)
+model WeeklyMission {
+  id               Int           @id @default(autoincrement())
+  title            String
+  description      String?
+  type             MissionType
+  targetCount      Int           @map("target_count")        // e.g. 3, 5, 100, 3
+  voucherAmount    Int           @map("voucher_amount")       // Rs 50, 80, 120, 200
+  minOrderForVoucher Int         @map("min_order_for_voucher") // Rs 1000, 1000, 1500, 2000
+  sortOrder        Int           @default(0) @map("sort_order")
+  isActive         Boolean       @default(true) @map("is_active")
+  createdAt        DateTime      @default(now()) @map("created_at")
+  progresses       UserMissionProgress[]
+  vouchers         MissionVoucher[]
+
+  @@map("weekly_missions")
+}
+
+// Per-user, per-week progress on each mission
+// One row per (userId, missionId, weekStart).
+// weekStart is always the Monday 00:00 UTC of the current week.
+model UserMissionProgress {
+  id          Int           @id @default(autoincrement())
+  userId      Int           @map("user_id")
+  missionId   Int           @map("mission_id")
+  weekStart   DateTime      @map("week_start")  // Monday 00:00 UTC
+  progress    Int           @default(0)          // running count toward target
+  completed   Boolean       @default(false)
+  completedAt DateTime?     @map("completed_at")
+  createdAt   DateTime      @default(now()) @map("created_at")
+  user        User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  mission     WeeklyMission @relation(fields: [missionId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, missionId, weekStart])
+  @@index([userId, weekStart])
+  @@index([missionId])
+  @@map("user_mission_progress")
+}
+
+// Voucher awarded to a user on mission completion
+// Voucher is a generated PromoCode tied to this user only.
+model MissionVoucher {
+  id          Int           @id @default(autoincrement())
+  userId      Int           @map("user_id")
+  missionId   Int           @map("mission_id")
+  weekStart   DateTime      @map("week_start")
+  promoCode   String        @map("promo_code")  // the unique code the user applies at checkout
+  amount      Int                               // flat discount in Rs
+  minOrder    Int           @map("min_order")   // minimum order to use this voucher
+  redeemed    Boolean       @default(false)
+  redeemedAt  DateTime?     @map("redeemed_at")
+  expiresAt   DateTime      @map("expires_at")  // end of week + 7 days grace
+  createdAt   DateTime      @default(now()) @map("created_at")
+  user        User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  mission     WeeklyMission @relation(fields: [missionId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, missionId, weekStart])
+  @@index([userId])
+  @@index([promoCode])
+  @@map("mission_vouchers")
 }

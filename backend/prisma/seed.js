@@ -97,6 +97,54 @@ async function main() {
   });
   console.log('✅ App config: daily_spin_limit = 1');
 
+  // ─── Weekly Missions ──────────────────────────────────────────────────────────
+  const missions = [
+    {
+      title: 'Item Starter',
+      description: 'Buy any 3 items in a week and earn a Rs. 50 voucher!',
+      type: 'ITEMS_BOUGHT',
+      targetCount: 3,
+      voucherAmount: 50,
+      minOrderForVoucher: 1000,
+      sortOrder: 1,
+    },
+    {
+      title: 'Item Collector',
+      description: 'Buy any 5 items in a week and earn a Rs. 80 voucher!',
+      type: 'ITEMS_BOUGHT',
+      targetCount: 5,
+      voucherAmount: 80,
+      minOrderForVoucher: 1000,
+      sortOrder: 2,
+    },
+    {
+      title: 'Big Shopper',
+      description: 'Buy 100 items in a week and earn a Rs. 120 voucher!',
+      type: 'ITEMS_BOUGHT',
+      targetCount: 100,
+      voucherAmount: 120,
+      minOrderForVoucher: 1500,
+      sortOrder: 3,
+    },
+    {
+      title: 'Deal Hunter',
+      description: 'Order 3 deals in a week and earn a Rs. 200 voucher!',
+      type: 'DEALS_BOUGHT',
+      targetCount: 3,
+      voucherAmount: 200,
+      minOrderForVoucher: 2000,
+      sortOrder: 4,
+    },
+  ];
+
+  for (const mission of missions) {
+    const existing = await prisma.weeklyMission.findFirst({ where: { title: mission.title } });
+    if (!existing) {
+      await prisma.weeklyMission.create({ data: mission });
+    }
+  }
+  console.log('✅ Weekly missions seeded');
+
   console.log('\n🎉 Seeding complete!');
 }
 

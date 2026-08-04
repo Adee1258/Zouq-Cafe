@@ -5,6 +5,7 @@ import toast from 'react-hot-toast';
 import api from '../../lib/api';
 import socket from '../../lib/socket';
 import Spinner from '../../components/ui/Spinner';
+import Button from '../../components/ui/Button';
 import Badge, { orderStatusVariant, orderStatusLabel } from '../../components/ui/Badge';
 // ── Order status stepper ─────────────────────────────────────────────────────
 const STATUS_STEPS = ['PENDING', 'APPROVED', 'PREPARING', 'OUT_FOR_DELIVERY', 'DELIVERED'];

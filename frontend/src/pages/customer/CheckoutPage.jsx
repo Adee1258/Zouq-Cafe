@@ -357,8 +357,9 @@ const CheckoutPage = () => {
       }
 
       if (form.paymentType === 'ONLINE') {
-        clearCart();
         setPlacedOrder(order);
+        // Delay clearCart so placedOrder renders first, preventing cart-empty flash
+        setTimeout(() => clearCart(), 100);
         toast.success('Order placed! Now send payment on EasyPaisa.');
       } else {
         clearCart();

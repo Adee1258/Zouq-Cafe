@@ -59,7 +59,115 @@ const CheckoutPage = () => {
     api.get('/payments/easypaisa-number').then((r) => setEpInfo(r.data.data)).catch(() => {});
   }, []);
 
-  // Redirect if cart is empty
+  // ── IMPORTANT: placedOrder check MUST be before cart-empty check ──────────
+  // clearCart() is called after order is placed, so items becomes empty.
+  // We must show the payment screen instead of "cart is empty".
+  if (placedOrder) {
+    return (
+      <div className="max-w-lg mx-auto px-4 py-8 pb-28">
+        <div className="text-center mb-6">
+          <div className="w-16 h-16 rounded-full bg-green-100 flex items-center justify-center mx-auto mb-3">
+            <CheckCircle size={32} className="text-green-500" />
+          </div>
+          <h1 className="text-2xl font-bold text-gray-900">Order Placed! 🎉</h1>
+          <p className="text-gray-500 text-sm mt-1">Order #{placedOrder.id}</p>
+        </div>
+
+        {/* Step 1: Pay */}
+        <div className="bg-white rounded-2xl p-5 shadow-sm mb-4">
+          <div className="flex items-center gap-2 mb-4">
+            <div className="w-7 h-7 rounded-full bg-orange-500 text-white text-sm font-bold flex items-center justify-center flex-shrink-0">1</div>
+            <h2 className="font-bold text-gray-900">Send Payment on EasyPaisa</h2>
+          </div>
+          <div className="bg-green-50 border border-green-200 rounded-xl p-4 mb-3">
+            <p className="text-xs text-green-600 font-semibold mb-1">EasyPaisa Account</p>
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-2xl font-extrabold text-gray-900 tracking-wider">
+                  {epInfo?.number || '03008356059'}
+                </p>
+                <p className="text-sm text-gray-500 mt-0.5">{epInfo?.accountName || 'ZOCK Cafe'}</p>
+              </div>
+              <button
+                onClick={() => { navigator.clipboard.writeText(epInfo?.number || '03008356059'); toast.success('Number copied!'); }}
+                className="p-2.5 rounded-xl bg-green-100 hover:bg-green-200 transition-colors"
+              >
+                <Copy size={18} className="text-green-600" />
+              </button>
+            </div>
+          </div>
+          <div className="bg-orange-50 border border-orange-200 rounded-xl px-4 py-3 flex items-center gap-2">
+            <AlertCircle size={16} className="text-orange-500 flex-shrink-0" />
+            <div>
+              <p className="text-sm font-bold text-orange-700">Amount to Send</p>
+              <p className="text-xl font-extrabold text-orange-600">Rs. {Number(placedOrder.totalAmount).toLocaleString()}</p>
+            </div>
+          </div>
+        </div>
+
+        {/* Step 2: Upload screenshot */}
+        <div className="bg-white rounded-2xl p-5 shadow-sm mb-4">
+          <div className="flex items-center gap-2 mb-4">
+            <div className="w-7 h-7 rounded-full bg-orange-500 text-white text-sm font-bold flex items-center justify-center flex-shrink-0">2</div>
+            <h2 className="font-bold text-gray-900">Upload Payment Screenshot</h2>
+          </div>
+
+          {uploaded ? (
+            <div className="bg-green-50 border border-green-200 rounded-xl p-4 text-center">
+              <CheckCircle size={28} className="text-green-500 mx-auto mb-2" />
+              <p className="font-bold text-green-700">Screenshot Uploaded!</p>
+              <p className="text-sm text-gray-500 mt-1">Admin will verify shortly. Order will be approved once verified.</p>
+              <button
+                onClick={() => navigate(`/orders/${placedOrder.id}`, { replace: true })}
+                className="mt-4 bg-orange-500 text-white font-bold px-6 py-2.5 rounded-xl text-sm hover:bg-orange-600 transition-colors"
+              >
+                Track Order
+              </button>
+            </div>
+          ) : (
+            <>
+              <div
+                onClick={() => screenshotRef.current?.click()}
+                className={`border-2 border-dashed rounded-xl cursor-pointer transition-colors mb-3 ${
+                  screenshotPreview ? 'border-orange-300 bg-orange-50' : 'border-gray-200 hover:border-orange-300 bg-gray-50'
+                }`}
+              >
+                {screenshotPreview ? (
+                  <div className="relative">
+                    <img src={screenshotPreview} alt="Screenshot" className="w-full max-h-64 object-contain rounded-xl" />
+                    <div className="absolute inset-0 bg-black/30 rounded-xl flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity">
+                      <p className="text-white text-sm font-semibold">Click to change</p>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex flex-col items-center justify-center py-8 gap-2 text-gray-400">
+                    <Upload size={28} />
+                    <p className="text-sm font-medium">Tap to upload screenshot</p>
+                    <p className="text-xs">JPG, PNG — Max 5MB</p>
+                  </div>
+                )}
+              </div>
+              <input ref={screenshotRef} type="file" accept="image/*" className="hidden" onChange={handleScreenshotChange} />
+              <Button variant="primary" fullWidth onClick={handleUploadScreenshot} disabled={!screenshot} isLoading={uploadLoading}>
+                <Upload size={16} className="mr-2" /> Submit Screenshot
+              </Button>
+            </>
+          )}
+        </div>
+
+        {!uploaded && (
+          <button
+            onClick={() => navigate(`/orders/${placedOrder.id}`, { replace: true })}
+            className="w-full text-center text-sm text-gray-400 hover:text-gray-600 py-2"
+          >
+            Upload later from My Orders →
+          </button>
+        )}
+      </div>
+    );
+  }
+
+  // Redirect if cart is empty — AFTER placedOrder check
   if (items.length === 0) {
     return (
       <div className="max-w-lg mx-auto px-4 py-16 text-center">
@@ -291,134 +399,6 @@ const CheckoutPage = () => {
     }
   };
 
-  // ── If ONLINE order just placed → show payment instructions ───────────────
-  if (placedOrder) {
-    return (
-      <div className="max-w-lg mx-auto px-4 py-8">
-        <div className="text-center mb-6">
-          <div className="w-16 h-16 rounded-full bg-green-100 flex items-center justify-center mx-auto mb-3">
-            <CheckCircle size={32} className="text-green-500" />
-          </div>
-          <h1 className="text-2xl font-bold text-gray-900">Order Placed! 🎉</h1>
-          <p className="text-gray-500 text-sm mt-1">Order #{placedOrder.id}</p>
-        </div>
-
-        {/* Step 1: Pay */}
-        <div className="bg-white rounded-2xl p-5 shadow-sm mb-4">
-          <div className="flex items-center gap-2 mb-4">
-            <div className="w-7 h-7 rounded-full bg-orange-500 text-white text-sm font-bold flex items-center justify-center flex-shrink-0">1</div>
-            <h2 className="font-bold text-gray-900">Send Payment on EasyPaisa</h2>
-          </div>
-
-          <div className="bg-green-50 border border-green-200 rounded-xl p-4 mb-3">
-            <p className="text-xs text-green-600 font-semibold mb-1">EasyPaisa Account</p>
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-2xl font-extrabold text-gray-900 tracking-wider">
-                  {epInfo?.number || 'Loading...'}
-                </p>
-                <p className="text-sm text-gray-500 mt-0.5">{epInfo?.accountName || 'ZOCK Cafe'}</p>
-              </div>
-              {epInfo?.number && (
-                <button
-                  onClick={() => {
-                    navigator.clipboard.writeText(epInfo.number);
-                    toast.success('Number copied!');
-                  }}
-                  className="p-2.5 rounded-xl bg-green-100 hover:bg-green-200 transition-colors"
-                >
-                  <Copy size={18} className="text-green-600" />
-                </button>
-              )}
-            </div>
-          </div>
-
-          <div className="bg-orange-50 border border-orange-200 rounded-xl px-4 py-3 flex items-center gap-2">
-            <AlertCircle size={16} className="text-orange-500 flex-shrink-0" />
-            <div>
-              <p className="text-sm font-bold text-orange-700">Amount to Send</p>
-              <p className="text-xl font-extrabold text-orange-600">Rs. {Number(placedOrder.totalAmount).toLocaleString()}</p>
-            </div>
-          </div>
-        </div>
-
-        {/* Step 2: Upload screenshot */}
-        <div className="bg-white rounded-2xl p-5 shadow-sm mb-4">
-          <div className="flex items-center gap-2 mb-4">
-            <div className="w-7 h-7 rounded-full bg-orange-500 text-white text-sm font-bold flex items-center justify-center flex-shrink-0">2</div>
-            <h2 className="font-bold text-gray-900">Upload Payment Screenshot</h2>
-          </div>
-
-          {uploaded ? (
-            <div className="bg-green-50 border border-green-200 rounded-xl p-4 text-center">
-              <CheckCircle size={28} className="text-green-500 mx-auto mb-2" />
-              <p className="font-bold text-green-700">Screenshot Uploaded!</p>
-              <p className="text-sm text-gray-500 mt-1">Admin will verify your payment shortly. Your order will be approved once verified.</p>
-              <button
-                onClick={() => navigate(`/orders/${placedOrder.id}`, { replace: true })}
-                className="mt-4 bg-orange-500 text-white font-bold px-6 py-2.5 rounded-xl text-sm hover:bg-orange-600 transition-colors"
-              >
-                Track Order
-              </button>
-            </div>
-          ) : (
-            <>
-              {/* Upload area */}
-              <div
-                onClick={() => screenshotRef.current?.click()}
-                className={`border-2 border-dashed rounded-xl cursor-pointer transition-colors mb-3 ${
-                  screenshotPreview ? 'border-orange-300 bg-orange-50' : 'border-gray-200 hover:border-orange-300 bg-gray-50'
-                }`}
-              >
-                {screenshotPreview ? (
-                  <div className="relative">
-                    <img src={screenshotPreview} alt="Screenshot" className="w-full max-h-64 object-contain rounded-xl" />
-                    <div className="absolute inset-0 bg-black/30 rounded-xl flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity">
-                      <p className="text-white text-sm font-semibold">Click to change</p>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="flex flex-col items-center justify-center py-8 gap-2 text-gray-400">
-                    <Upload size={28} />
-                    <p className="text-sm font-medium">Tap to upload screenshot</p>
-                    <p className="text-xs">JPG, PNG — Max 5MB</p>
-                  </div>
-                )}
-              </div>
-              <input
-                ref={screenshotRef}
-                type="file"
-                accept="image/*"
-                className="hidden"
-                onChange={handleScreenshotChange}
-              />
-
-              <Button
-                variant="primary"
-                fullWidth
-                onClick={handleUploadScreenshot}
-                disabled={!screenshot}
-                isLoading={uploadLoading}
-              >
-                <Upload size={16} className="mr-2" />
-                Submit Screenshot
-              </Button>
-            </>
-          )}
-        </div>
-
-        {/* Skip for now */}
-        {!uploaded && (
-          <button
-            onClick={() => navigate(`/orders/${placedOrder.id}`, { replace: true })}
-            className="w-full text-center text-sm text-gray-400 hover:text-gray-600 py-2"
-          >
-            Upload later from My Orders →
-          </button>
-        )}
-      </div>
-    );
-  }
 
   return (
     <div className="max-w-2xl mx-auto px-4 py-5">

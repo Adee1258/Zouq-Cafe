@@ -84,6 +84,34 @@ const CheckoutPage = () => {
     api.get('/payments/easypaisa-number').then((r) => setEpInfo(r.data.data)).catch(() => {});
   }, []);
 
+  // ── Screenshot upload handlers — defined BEFORE placedOrder early return ───
+  const handleScreenshotChange = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 5 * 1024 * 1024) { toast.error('Image too large. Max 5MB.'); return; }
+    setScreenshot(file);
+    setScreenshotPreview(URL.createObjectURL(file));
+  };
+
+  const handleUploadScreenshot = async () => {
+    if (!screenshot || !placedOrder) return;
+    setUploadLoading(true);
+    try {
+      const fd = new FormData();
+      fd.append('screenshot', screenshot);
+      await api.post(`/payments/screenshot/${placedOrder.id}`, fd, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+      setUploaded(true);
+      sessionStorage.removeItem('zouq_placed_order');
+      toast.success('Screenshot uploaded! Admin will verify shortly.');
+    } catch (err) {
+      toast.error(err.message || 'Upload failed. Try again.');
+    } finally {
+      setUploadLoading(false);
+    }
+  };
+
   // ── IMPORTANT: placedOrder check MUST be before cart-empty check ──────────
   // clearCart() is called after order is placed, so items becomes empty.
   // We must show the payment screen instead of "cart is empty".
@@ -404,33 +432,6 @@ const CheckoutPage = () => {
     }
   };
 
-  // ── Screenshot upload handler ──────────────────────────────────────────────
-  const handleScreenshotChange = (e) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    if (file.size > 5 * 1024 * 1024) { toast.error('Image too large. Max 5MB.'); return; }
-    setScreenshot(file);
-    setScreenshotPreview(URL.createObjectURL(file));
-  };
-
-  const handleUploadScreenshot = async () => {
-    if (!screenshot || !placedOrder) return;
-    setUploadLoading(true);
-    try {
-      const fd = new FormData();
-      fd.append('screenshot', screenshot);
-      await api.post(`/payments/screenshot/${placedOrder.id}`, fd, {
-        headers: { 'Content-Type': 'multipart/form-data' },
-      });
-      setUploaded(true);
-      sessionStorage.removeItem('zouq_placed_order'); // clean up after successful upload
-      toast.success('Screenshot uploaded! Admin will verify shortly.');
-    } catch (err) {
-      toast.error(err.message || 'Upload failed. Try again.');
-    } finally {
-      setUploadLoading(false);
-    }
-  };
 
 
   return (

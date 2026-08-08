@@ -27,9 +27,18 @@ const CheckoutPage = () => {
   const DELIVERY_CHARGES = { inside: 50, outside: 150 };
 
   // ── After order placed (ONLINE) ────────────────────────────────────────────
-  // Use sessionStorage to survive any re-renders/remounts caused by clearCart()
-  const [placedOrder,   setPlacedOrderState] = useState(() => {
+  // Use sessionStorage to survive clearCart() re-render, but only for current checkout
+  // session — clear it when component mounts fresh (items in cart = new checkout)
+  const [placedOrder, setPlacedOrderState] = useState(() => {
     try {
+      // Only restore placedOrder if cart is currently empty
+      // (meaning user just placed an order and cart was cleared)
+      const cartItems = JSON.parse(localStorage.getItem('zouq_cart') || '[]');
+      if (cartItems.length > 0) {
+        // Cart has items = fresh checkout, discard any old placedOrder
+        sessionStorage.removeItem('zouq_placed_order');
+        return null;
+      }
       const saved = sessionStorage.getItem('zouq_placed_order');
       return saved ? JSON.parse(saved) : null;
     } catch { return null; }

@@ -20,7 +20,7 @@ const ORDER_ITEMS_INCLUDE = {
 // ─── POST /api/orders ─────────────────────────────────────────────────────────
 const createOrder = async (req, res) => {
   try {
-    const { items, address, paymentType, notes, dealOverrides, promoCode, redeemPoints } = req.body;
+    const { items, address, paymentType, notes, dealOverrides, promoCode, redeemPoints, deliveryCharge, deliveryArea } = req.body;
     const userId = req.user.id;
 
     if (!items || items.length === 0) {
@@ -236,17 +236,22 @@ const createOrder = async (req, res) => {
         }
       }
 
+      // ── Delivery charge ──────────────────────────────────────────────────
+      const dc = Number(deliveryCharge) || 0;
+      const validDc = [0, 50, 150].includes(dc) ? dc : 0;
+      totalAmount = totalAmount + validDc;
+
       const newOrder = await tx.order.create({
         data: {
           userId, totalAmount, paymentType, address,
-          discountAmount: (discountAmount || 0) + pointsDiscount,
-          promoCode: promoRecord ? promoRecord.code : null,
-          notes: finalNotes, status: 'PENDING',
-          items: { create: allOrderItems },
+          discountAmount:  (discountAmount || 0) + pointsDiscount,
+          deliveryCharge:  validDc,
+          deliveryArea:    deliveryArea || null,
+          promoCode:       promoRecord ? promoRecord.code : null,
+          notes:           finalNotes, status: 'PENDING',
+          items:           { create: allOrderItems },
         },
-        include: {
-          ...ORDER_ITEMS_INCLUDE,
-        },
+        include: { ...ORDER_ITEMS_INCLUDE },
       });
       await tx.payment.create({
         data: { orderId: newOrder.id, method: paymentType, status: 'PENDING' },

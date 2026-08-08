@@ -23,6 +23,8 @@ const CheckoutPage = () => {
   const [errors,      setErrors]      = useState({});
   const [loading,     setLoading]     = useState(false);
   const [saveAddress, setSaveAddress] = useState(false);
+  const [deliveryArea, setDeliveryArea] = useState('inside'); // 'inside' | 'outside'
+  const DELIVERY_CHARGES = { inside: 50, outside: 150 };
 
   // ── After order placed (ONLINE) ────────────────────────────────────────────
   const [placedOrder,   setPlacedOrder]   = useState(null);   // order just placed
@@ -83,9 +85,10 @@ const CheckoutPage = () => {
   }
 
   // ── Computed totals ────────────────────────────────────────────────────────
+  const deliveryCharge = DELIVERY_CHARGES[deliveryArea] || 50;
   const promoDiscount  = promoResult?.discountAmount || 0;
   const afterPromo     = promoResult ? promoResult.finalTotal : totalPrice;
-  const finalTotal     = Math.max(0, afterPromo - redeemDiscount);
+  const finalTotal     = Math.max(0, afterPromo - redeemDiscount) + deliveryCharge;
 
   // ── Points helpers ─────────────────────────────────────────────────────────
   const maxRedeemable = loyaltyBalance
@@ -219,17 +222,19 @@ const CheckoutPage = () => {
 
       const payload = {
         items: orderItems,
-        address:     form.address.trim(),
-        notes:       form.notes.trim() || undefined,
-        paymentType: form.paymentType,
-        dealOverrides: items.filter((i) => i.isDeal).map((i) => ({
+        address:        form.address.trim(),
+        notes:          form.notes.trim() || undefined,
+        paymentType:    form.paymentType,
+        dealOverrides:  items.filter((i) => i.isDeal).map((i) => ({
           dealId:       i.dealId,
           dealPrice:    i.price,
           cartQuantity: i.quantity,
-          cartKey:      i.id,   // matches dealCartKey on items
+          cartKey:      i.id,
         })),
-        promoCode:    promoResult?.code || undefined,
-        redeemPoints: redeemApplied > 0 ? redeemApplied : undefined,
+        promoCode:      promoResult?.code || undefined,
+        redeemPoints:   redeemApplied > 0 ? redeemApplied : undefined,
+        deliveryCharge: deliveryCharge,
+        deliveryArea:   deliveryArea,
       };
 
       const res   = await api.post('/orders', payload);
@@ -248,8 +253,8 @@ const CheckoutPage = () => {
         setPlacedOrder(order);
         toast.success('Order placed! Now send payment on EasyPaisa.');
       } else {
-        toast.success('Order placed! Pay on delivery 🎉');
         clearCart();
+        toast.success('Order placed! 🎉');
         navigate(`/orders/${order.id}`, { replace: true });
       }
     } catch (err) {
@@ -432,6 +437,34 @@ const CheckoutPage = () => {
           <h2 className="font-bold text-gray-900 mb-4 flex items-center gap-2">
             <MapPin size={18} className="text-orange-500" /> Delivery Address
           </h2>
+
+          {/* ── Delivery Area Selection ── */}
+          <div className="mb-4">
+            <p className="text-sm font-semibold text-gray-700 mb-2">Delivery Area</p>
+            <div className="grid grid-cols-2 gap-2">
+              {[
+                { value: 'inside',  label: 'Buch Villas',         sub: 'Rs. 50 delivery',  emoji: '📍' },
+                { value: 'outside', label: 'Outside Buch Villas', sub: 'Rs. 150 delivery', emoji: '🛵' },
+              ].map(({ value, label, sub, emoji }) => (
+                <button
+                  key={value}
+                  type="button"
+                  onClick={() => setDeliveryArea(value)}
+                  className={`flex items-center gap-2 p-3 rounded-xl border-2 text-left transition-all ${
+                    deliveryArea === value
+                      ? 'border-orange-500 bg-orange-50'
+                      : 'border-gray-200 hover:border-gray-300'
+                  }`}
+                >
+                  <span className="text-xl">{emoji}</span>
+                  <div>
+                    <p className="text-xs font-bold text-gray-900">{label}</p>
+                    <p className={`text-xs font-semibold ${deliveryArea === value ? 'text-orange-500' : 'text-gray-400'}`}>{sub}</p>
+                  </div>
+                </button>
+              ))}
+            </div>
+          </div>
 
           {/* Saved address quick-fill button */}
           {user?.address && user.address !== form.address && (
@@ -702,6 +735,12 @@ const CheckoutPage = () => {
                   <span>− Rs. {redeemDiscount.toLocaleString()}</span>
                 </div>
               )}
+              <div className="flex justify-between text-sm text-gray-500">
+                <span className="flex items-center gap-1">
+                  🛵 Delivery ({deliveryArea === 'inside' ? 'Buch Villas' : 'Outside'})
+                </span>
+                <span>+ Rs. {deliveryCharge}</span>
+              </div>
               <div className="flex justify-between font-extrabold text-gray-900 text-base pt-1 border-t border-gray-100">
                 <span>Total</span>
                 <span className="text-orange-600">Rs. {Math.round(finalTotal).toLocaleString()}</span>

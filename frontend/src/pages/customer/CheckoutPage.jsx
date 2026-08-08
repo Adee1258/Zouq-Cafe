@@ -27,9 +27,25 @@ const CheckoutPage = () => {
   const DELIVERY_CHARGES = { inside: 50, outside: 150 };
 
   // ── After order placed (ONLINE) ────────────────────────────────────────────
-  const [placedOrder,   setPlacedOrder]   = useState(null);   // order just placed
-  const [epInfo,        setEpInfo]        = useState(null);   // { number, accountName }
-  const [screenshot,    setScreenshot]    = useState(null);   // File object
+  // Use sessionStorage to survive any re-renders/remounts caused by clearCart()
+  const [placedOrder,   setPlacedOrderState] = useState(() => {
+    try {
+      const saved = sessionStorage.getItem('zouq_placed_order');
+      return saved ? JSON.parse(saved) : null;
+    } catch { return null; }
+  });
+
+  const setPlacedOrder = (order) => {
+    if (order) {
+      sessionStorage.setItem('zouq_placed_order', JSON.stringify(order));
+    } else {
+      sessionStorage.removeItem('zouq_placed_order');
+    }
+    setPlacedOrderState(order);
+  };
+
+  const [epInfo,        setEpInfo]        = useState(null);
+  const [screenshot,    setScreenshot]    = useState(null);
   const [screenshotPreview, setScreenshotPreview] = useState(null);
   const [uploadLoading, setUploadLoading] = useState(false);
   const [uploaded,      setUploaded]      = useState(false);
@@ -118,7 +134,10 @@ const CheckoutPage = () => {
               <p className="font-bold text-green-700">Screenshot Uploaded!</p>
               <p className="text-sm text-gray-500 mt-1">Admin will verify shortly. Order will be approved once verified.</p>
               <button
-                onClick={() => navigate(`/orders/${placedOrder.id}`, { replace: true })}
+                onClick={() => {
+                  setPlacedOrder(null);
+                  navigate(`/orders/${placedOrder.id}`, { replace: true });
+                }}
                 className="mt-4 bg-orange-500 text-white font-bold px-6 py-2.5 rounded-xl text-sm hover:bg-orange-600 transition-colors"
               >
                 Track Order
@@ -157,7 +176,10 @@ const CheckoutPage = () => {
 
         {!uploaded && (
           <button
-            onClick={() => navigate(`/orders/${placedOrder.id}`, { replace: true })}
+            onClick={() => {
+              setPlacedOrder(null);
+              navigate(`/orders/${placedOrder.id}`, { replace: true });
+            }}
             className="w-full text-center text-sm text-gray-400 hover:text-gray-600 py-2"
           >
             Upload later from My Orders →
@@ -392,6 +414,7 @@ const CheckoutPage = () => {
         headers: { 'Content-Type': 'multipart/form-data' },
       });
       setUploaded(true);
+      sessionStorage.removeItem('zouq_placed_order'); // clean up after successful upload
       toast.success('Screenshot uploaded! Admin will verify shortly.');
     } catch (err) {
       toast.error(err.message || 'Upload failed. Try again.');
